@@ -67,10 +67,16 @@ def handle_dialogue_and_modals():
         handled = True
 
         if d.get("hasOptions") or d.get("hasSelectAnOption"):
-            opts = d.get("options", [])
+            raw_opts = d.get("options", [])
             q = d.get("question", "") or d.get("dialogueText", "")
 
-            # استدعاء المساعد الذكي المعزول (0ms للكاش + Groq AI للجديد)
+            # استبعاد رسائل الانتظار أو النوافذ المؤقتة قبل اتخاذ القرار
+            opts = [o for o in raw_opts if isinstance(o, str) and o.strip().lower().rstrip(".!?") not in ("please wait", "click here to continue")]
+            if not opts:
+                time.sleep(0.5)
+                continue
+
+            # استدعاء المساعد المعزول (كاش محلي فقط بدون أي خدمات خارجية)
             selected = solve_security_dialogue(q, opts)
 
             if selected:
@@ -79,6 +85,7 @@ def handle_dialogue_and_modals():
                 time.sleep(1.2)
             else:
                 raise SafetyStop(f"إجابة غير معروفة؛ أجب يدوياً ثم أعد التشغيل: {opts}")
+
         elif d.get("hasContinue"):
             api_post("/dialogue/continue", {})
             time.sleep(0.8)

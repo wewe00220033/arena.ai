@@ -48,6 +48,10 @@ class Tests(unittest.TestCase):
         self.assertIsNone(solve_security_dialogue('unknown', ['Yes']))
     def test_known_question(self):
         self.assertEqual(solve_security_dialogue('Who can I give my password to?', ['Nobody.', 'Everyone']), 'Nobody.')
+    def test_please_wait_ignored(self):
+        self.assertIsNone(solve_security_dialogue('Who can I give my password to?', ['Please wait...']))
+        self.assertEqual(solve_security_dialogue('Who can I give my password to?', ['Please wait...', 'Nobody.']), 'Nobody.')
+
     def test_walk_failure_stops(self):
         with patch.object(bot, 'controller', self.c), patch.object(bot, 'api_post', return_value={'success': False}):
             with self.assertRaises(SafetyStop): bot.walk_to(2144, 5281)
