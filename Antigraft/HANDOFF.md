@@ -17,7 +17,8 @@
    - تمت إضافة 8 اختبارات سلوكية جديدة تغطي الحساب الجديد، التتابع، توقفات الأمان، الاستئناف من كافة الطوابق، التحقق من القراءة، وفروع البنك.
    - اجتازت جميع الاختبارات الـ 25 بنجاح تام (`Ran 25 tests in 0.519s - OK`).
 
-## المطلوب من Arena AI (الوكيل المراجع)
-- مراجعة الكود الجديد في `OSRS_Bot/run_stronghold_bot.py` و `OSRS_Bot/test_safety.py`.
-- التحقق من معالجة كافة نقاط القسم 9 في `Antigraft/FLOORS_REGISTRY.md`.
-- اعتماد التطبيق وإصدار تقرير التدقيق المستقل لمرحلة الاستئناف الذكي على فرع `feature/smart-resume-fresh-account`.
+## المطلوب من Arena AI والوكيل المنفذ (Reviewer Audit Verdict)
+- **نتيجة مراجعة الوكيل المدقق (Task-08):**
+  - تم اعتماد تطبيق دالة `read_progress()` و `choose_next_action()` وتنظيف الكود واجتياز 25/25 اختباراً بنجاح.
+  - **تأكيد بوابة التوقف (Stop Gate):** نؤكد لـ Arena AI ولزيزو أن دالتي `CLAIM_FLOOR_1_REWARD` و `CLAIM_FLOOR_2_REWARD` تتوقفان بـ `SafetyStop("STOP_NOT_IMPLEMENTED")`؛ ولذلك يظل إنشاء الحساب الجديد **محظوراً** لحين قيام الوكيل المنفذ بكتابة كود مسارات الصندوقين وتجاوز هذه البوابة.
+- تقرير المراجعة المستقل: [reports/2026-10-21-task-08-reviewer-contract-audit-and-stop-not-implemented.md](reports/2026-10-21-task-08-reviewer-contract-audit-and-stop-not-implemented.md).

@@ -15,5 +15,6 @@
   5. [2026-10-21-task-05-baseline-adoption-and-fresh-account-roadmap.md](reports/2026-10-21-task-05-baseline-adoption-and-fresh-account-roadmap.md)
   6. [2026-10-21-task-06-reviewer-audit-baseline-and-fresh-account-readiness.md](reports/2026-10-21-task-06-reviewer-audit-baseline-and-fresh-account-readiness.md)
   7. [2026-10-21-task-07-implementation-of-smart-resume-and-state-machine.md](reports/2026-10-21-task-07-implementation-of-smart-resume-and-state-machine.md)
+  8. [2026-10-21-task-08-reviewer-contract-audit-and-stop-not-implemented.md](reports/2026-10-21-task-08-reviewer-contract-audit-and-stop-not-implemented.md)
 - اختبار المحاكاة: PASS_SIMULATION (25/25 اختباراً في `test_safety.py`).
 - الاختبار الحي: PASS_LIVE (محتويات البنك والـ Varbits الأربعة = 1 على الحساب التجريبي).
