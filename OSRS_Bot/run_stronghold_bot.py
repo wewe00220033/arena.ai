@@ -435,14 +435,99 @@ def execute_step(action):
         return False
 
     elif action == "CLAIM_FLOOR_2_REWARD":
-        print("\n⚠️ تنبيه: مسار صندوق الطابق الثاني (Grain of Plenty) قيد التوثيق الميداني المعتمد.")
-        raise SafetyStop("STOP_NOT_IMPLEMENTED: مسار صندوق الطابق الثاني غير معتمد بعد؛ افتح الصندوق يدوياً ثم أعد تشغيل البوت للاستئناف")
+        print("\n--- عبور الطابق الثاني (Catacomb of Famine) وحصد مكافأة 3,000 GP وحركة Slap head ---")
+        st = api_get("/state")
+        pos = st.get("player", {}).get("position", {}) if isinstance(st, dict) else {}
+        px, py = pos.get("x", 0), pos.get("y", 0)
+
+        # 1. تحديد المرحلة الابتدائية بناءً على موقع اللاعب الفعلي في الغرف الموثقة
+        if 2035 <= px <= 2050 and 5238 <= py <= 5250:
+            start_stage = 0  # غرفة البداية (سلم النزول وبوابة الاختصار 19005)
+        elif 2027 <= px <= 2036 and 5230 <= py <= 5240:
+            start_stage = 1  # الممر الشرقي
+        elif 2016 <= px <= 2026 and 5237 <= py <= 5250:
+            start_stage = 2  # الغرفة الشمالية
+        elif 2000 <= px <= 2016 and 5225 <= py <= 5250:
+            start_stage = 3  # الممر الغربي ومدخل الغرفة المركزية
+        elif 2017 <= px <= 2035 and 5210 <= py <= 5230:
+            start_stage = 4  # الغرفة المركزية (غرفة كيس الحبوب Grain of Plenty)
+        else:
+            raise SafetyStop(f"موقع اللاعب في الطابق الثاني خارج النطاق الموثق للمحطات: {(px, py)}")
+
+        # 2. تنفيذ المقاطع التالية بالترتيب الخطي مع التحقق من الوصول لنهاية كل مقطع
+        if start_stage <= 0:
+            print("📍 [المقطع 1/4] التحرك نحو مخرج غرفة البداية وعبور الباب...")
+            walk_to(2034, 5244, plane=0, timeout=25)
+            try_pass_door("Rickety door")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("x", 9999) > 2034:
+                raise SafetyStop(f"فشل إثبات عبور باب غرفة البداية بالطابق الثاني، ما زال اللاعب عند: {after_pos}")
+
+        if start_stage <= 1:
+            print("📍 [المقطع 2/4] عبور الممر الشرقي نحو مخرجه الشمالي...")
+            walk_to(2030, 5236, plane=0, timeout=15)
+            walk_to(2027, 5236, plane=0, timeout=15)
+            try_pass_door("Rickety door")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("y", 0) < 5241:
+                raise SafetyStop(f"فشل إثبات عبور باب الممر الشرقي بالطابق الثاني، اللاعب عند: {after_pos}")
+
+        if start_stage <= 2:
+            print("📍 [المقطع 3/4] عبور الغرفة الشمالية نحو بوابتها الغربية...")
+            walk_to(2025, 5245, plane=0, timeout=15)
+            walk_to(2020, 5244, plane=0, timeout=15)
+            walk_to(2019, 5237, plane=0, timeout=15)
+            try_pass_door("Rickety door")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("x", 9999) > 2016:
+                raise SafetyStop(f"فشل إثبات عبور باب الغرفة الشمالية بالطابق الثاني، اللاعب عند: {after_pos}")
+
+        if start_stage <= 3:
+            print("📍 [المقطع 4/4] عبور الممر الغربي نحو باب الغرفة المركزية...")
+            walk_to(2014, 5237, plane=0, timeout=15)
+            walk_to(2013, 5244, plane=0, timeout=15)
+            walk_to(2005, 5244, plane=0, timeout=15)
+            walk_to(2005, 5230, plane=0, timeout=15)
+            walk_to(2007, 5228, plane=0, timeout=15)
+            walk_to(2011, 5228, plane=0, timeout=15)
+            walk_to(2014, 5231, plane=0, timeout=15)
+            walk_to(2014, 5228, plane=0, timeout=15)
+            try_pass_door("Rickety door")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("x", 0) < 2017 or after_pos.get("y", 9999) > 5230:
+                raise SafetyStop(f"فشل إثبات دخول الغرفة المركزية بالطابق الثاني، اللاعب عند: {after_pos}")
+
+        # 3. الوصول لموقع كيس الحبوب في قلب الغرفة المركزية (Grain of Plenty: 19000)
+        print("📍 الوصول لكيس Grain of Plenty في الغرفة المركزية...")
+        walk_to(2021, 5218, plane=0, timeout=20)
+
+        # 4. تفتيش الكيس واستلام المكافأة مع حل الأسئلة الأمنية
+        print("🖐️ التفاعل مع كيس Grain of Plenty (19000)...")
+        for attempt in range(5):
+            interact_object(19000, "Search")
+            for _ in range(6):
+                time.sleep(1)
+                handle_dialogue_and_modals()
+            if api_get("/varbits?id=2310").get("value", 0) == 1:
+                print("💰 مبروووك! تم استلام مكافأة الطابق الثاني (3,000 GP + Slap head emote) بنجاح!")
+                return True
+        raise SafetyStop("فشل حصد مكافأة الطابق الثاني بعد التفاعل مع الصندوق (Grain of Plenty: 19000)")
 
     elif action == "FLOOR_2_TO_FLOOR_3":
         print("\n--- عبور الطابق الثاني إلى سلم النزول للطابق الثالث ---")
-        interact_object(19005, "Use")
-        time.sleep(2)
-        handle_dialogue_and_modals()
+        st = api_get("/state")
+        pos = st.get("player", {}).get("position", {}) if isinstance(st, dict) else {}
+        px = pos.get("x", 0)
+        py = pos.get("y", 0)
+        # إذا كان اللاعب في غرفة البداية (بعيد عن الغرفة المركزية)، يستخدم بوابة الاختصار
+        if px >= 2035 and py >= 5238:
+            interact_object(19005, "Use")
+            time.sleep(2)
+            handle_dialogue_and_modals()
         walk_to(2026, 5219, plane=0, timeout=35)
         print("🖐️ النزول عبر سلم الطابق الثاني (19004)...")
         for attempt in range(4):
