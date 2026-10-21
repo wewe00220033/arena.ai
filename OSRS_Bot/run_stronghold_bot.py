@@ -58,7 +58,10 @@ def handle_dialogue_and_modals():
     # 1. شباك التحذير للسلالم (groupId: 579, childId: 17)
     api_post("/widgets/click", {"groupId": 579, "childId": 17})
 
-    # 2. الحوارات والأسئلة (تكامل ذكي مع مساعد الأمان المعزول)
+    # 2. واجهة اختيار الجزمة في مهد الحياة بالطابق الرابع (groupId: 270, childId: 15 - Fancy boots)
+    api_post("/widgets/click", {"groupId": 270, "childId": 15})
+
+    # 3. الحوارات والأسئلة (تكامل ذكي مع مساعد الأمان المعزول)
     handled = False
     for _ in range(5):
         d = api_get("/dialogue")
