@@ -58,11 +58,9 @@ def handle_dialogue_and_modals():
     # 1. شباك التحذير للسلالم (groupId: 579, childId: 17)
     api_post("/widgets/click", {"groupId": 579, "childId": 17})
 
-    # 2. واجهة اختيار الجزمة في مهد الحياة بالطابق الرابع (groupId: 270, childId: 15 - Fancy boots)
-    api_post("/widgets/click", {"groupId": 270, "childId": 15})
-
-    # 3. الحوارات والأسئلة (تكامل ذكي مع مساعد الأمان المعزول)
+    # 2. الحوارات والأسئلة (تكامل ذكي مع مساعد الأمان المعزول)
     handled = False
+
     for _ in range(5):
         d = api_get("/dialogue")
         if not d.get("inDialogue"):
@@ -234,7 +232,24 @@ def main():
     # لو البنك مفتوح اقفله
     api_post("/bank/close", {})
 
+    # التحقق المسبق: إذا كان الحساب قد أتم الحصن بالكامل وهو آمن على السطح
+    vb1 = api_get("/varbits?id=2309").get("value", 0)
+    vb2 = api_get("/varbits?id=2310").get("value", 0)
+    vb3 = api_get("/varbits?id=2311").get("value", 0)
+    vb4 = api_get("/varbits?id=2312").get("value", 0)
+    if vb1 == 1 and vb2 == 1 and vb3 == 1 and vb4 == 1 and py < 5000:
+        print("\n" + "=" * 65)
+        print("🎉 الحساب أتم الـ Stronghold of Security بالكامل مسبقاً بنجاح 100%!")
+        print("✅ الطابق 1 (2,000 GP + Flap): مستلم (Varbit 2309 = 1)")
+        print("✅ الطابق 2 (3,000 GP + Slap Head): مستلم (Varbit 2310 = 1)")
+        print("✅ الطابق 3 (5,000 GP + Idea): مستلم (Varbit 2311 = 1)")
+        print("✅ الطابق 4 (Fancy Boots + Stamp Foot): مستلم (Varbit 2312 = 1)")
+        print(f"🏦 الحساب في أمان على السطح ({px}, {py})؛ لا داعي لتكرار المسار.")
+        print("=" * 65)
+        return
+
     # إذا كان اللاعب على السطح (سواء في لومبريدج أو البورصة أو الطريق)
+
     if py < 5000:
         print("\n--- [المرحلة 1]: التوجه لمدخل الـ Stronghold في قرية البرابرة ---")
         if not walk_to(3080, 3419, plane=0, timeout=160):
@@ -389,10 +404,13 @@ def main():
                 for _ in range(6):
                     time.sleep(1)
                     handle_dialogue_and_modals()
+                    # واجهة اختيار الجزمة (Make-All Interface groupId: 270, childId: 15) تظهر حصراً عند التفاعل مع المهد
+                    api_post("/widgets/click", {"groupId": 270, "childId": 15})
                 vb4 = api_get("/varbits?id=2312").get("value", 0)
                 if vb4 == 1:
                     print("👟 مبروووك! تم اختيار وحصد Fancy Boots بنجاح!")
                     break
+
 
         if api_get("/varbits?id=2312").get("value") != 1:
             raise SafetyStop("لم يتم تأكيد مكافأة الطابق الرابع")

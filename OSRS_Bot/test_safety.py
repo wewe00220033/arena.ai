@@ -63,4 +63,15 @@ class Tests(unittest.TestCase):
         with patch.object(bot, 'controller', self.c), patch.object(bot, 'api_post', self.post):
             with self.assertRaises(SafetyStop): bot.walk_to(2132, 5260, timeout=0.001)
 
+    def test_dialogue_does_not_click_boots_widget(self):
+        posted = []
+        with patch.object(bot, 'controller', self.c), \
+             patch.object(bot, 'api_post', side_effect=lambda p, d: posted.append((p, d)) or {'success': True}), \
+             patch.object(bot, 'api_get', side_effect=self.get):
+            bot.handle_dialogue_and_modals()
+        clicked_widgets = [d for p, d in posted if p == '/widgets/click']
+        self.assertNotIn({'groupId': 270, 'childId': 15}, clicked_widgets)
+
+
 if __name__ == '__main__': unittest.main()
+
