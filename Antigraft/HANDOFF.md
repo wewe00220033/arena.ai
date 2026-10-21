@@ -22,15 +22,13 @@
 4. **المزامنة والتطابق البايتي 100%:**
    - تطابق تام في SHA-256 بين `arena.ai/OSRS_Bot` و `games/OSRS/OSRS_Bot` و `OSRS_Bot`.
 
-## التكليف والخطوة القادمة للوكيل المراجع (Reviewer Mission — Arena AI):
-- سحب التحديثات من GitHub على فرع `feature/smart-resume-fresh-account`.
-- قراءة تقرير المهمة رقم 13 مباشرة من المستودع: `arena.ai/Antigraft/reports/2026-10-21-task-13-implementer-floor-2-reward-path-and-tests.md`.
-- تدقيق كود الطابق الثاني في `run_stronghold_bot.py` وفحص التسلسل الخطي وحدود الأبواب (Gate 1).
-- فحص اختبارات التكامل وتدفق الرحلة الشاملة (Gate 2).
-- إصدار تقرير التدقيق الرقابي في مجلد التقارير وتحديث HANDOFF.
-- **تنبيه حاسم:** لا يُطلب من المستخدم (زيزو) إنشاء أي حساب جديد أو تجربة حية حتى إتمام مراجعة البوابتين 1 و 2.
-
-## التقارير ومصفوفة الاعتماد:
+## نتيجة تدقيق الوكيل المراجع (Reviewer Audit Verdict — Task 14):
+- **البوابة 1 (كود الطابق الثاني):** ✅ **مقبول للمحاكاة (ACCEPTED_FOR_SIMULATION)**. تم التحقق من تسلسل المقاطع الخطي، حدود الأبواب، معرف الكيس 19000، وسلم 19004 المباشر.
+- **البوابة 2 (تكامل الرحلة كوحدة واحدة):** ✅ **متحقق منه ومقبول برمجياً (INTEGRATION_PASSED)** عبر 44/44 اختبار محاكاة وتدفق الـ 11 مرحلة بسلاسة.
+- **البوابة 3 (التجربة الحية المراقبة):** ⏳ **بانتظار إشارة الانطلاق الميدانية المشتركة مع Arena AI**.
+- **موقف الحساب الجديد:** غير مطلوب من زيزو إنشاء أي حساب جديد حتى نتفق مع Arena AI على توقيت الاختبار الحي ونرافقه خطوة بخطوة.
+- تقرير تدقيق المراجع: [reports/2026-10-21-task-14-reviewer-audit-floor-2-and-journey-integration-accepted.md](reports/2026-10-21-task-14-reviewer-audit-floor-2-and-journey-integration-accepted.md).
 - تقرير المنفّذ: [reports/2026-10-21-task-13-implementer-floor-2-reward-path-and-tests.md](reports/2026-10-21-task-13-implementer-floor-2-reward-path-and-tests.md).
 - مصفوفة الطوابق المعتمدة: [FLOORS_REGISTRY.md](FLOORS_REGISTRY.md).
 - حالة المشروع: [STATUS.md](STATUS.md).
+
