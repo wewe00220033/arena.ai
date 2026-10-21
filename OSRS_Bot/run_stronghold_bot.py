@@ -333,14 +333,63 @@ def execute_step(action):
         return False
 
     elif action == "CLAIM_FLOOR_1_REWARD":
-        print("\n⚠️ تنبيه: مسار صندوق الطابق الأول (Gift of Peace) قيد التوثيق الميداني المعتمد.")
-        raise SafetyStop("STOP_NOT_IMPLEMENTED: مسار صندوق الطابق الأول غير معتمد بعد؛ افتح الصندوق يدوياً ثم أعد تشغيل البوت للاستئناف")
+        print("\n--- عبور الطابق الأول (Vault of War) وحصد مكافأة 2,000 GP وحركة Flap ---")
+        st = api_get("/state")
+        pos = st.get("player", {}).get("position", {}) if isinstance(st, dict) else {}
+        px = pos.get("x", 0)
+        py = pos.get("y", 0)
+
+        # السير عبر المحطات والأبواب المعتمدة فقط إذا كان اللاعب خارج الغرفة المركزية
+        if px < 1895 or py > 5235:
+            # محطة 1: بوابة مخرج غرفة البداية
+            if px < 1865 and py >= 5232:
+                walk_to(1859, 5232, plane=0, timeout=25)
+                try_pass_door("Gate of War")
+
+            # محطة 2: الغرفة الجنوبية الغربية
+            if px < 1875 and py < 5235:
+                walk_to(1864, 5227, plane=0, timeout=15)
+                walk_to(1870, 5227, plane=0, timeout=15)
+                try_pass_door("Gate of War")
+
+            # محطة 3: الممر الشمالي
+            if px < 1895 and py >= 5235:
+                walk_to(1875, 5239, plane=0, timeout=20)
+                walk_to(1880, 5240, plane=0, timeout=15)
+                walk_to(1883, 5243, plane=0, timeout=15)
+                try_pass_door("Gate of War")
+
+            # محطة 4: الغرفة الشمالية الشرقية ومدخل الغرفة المركزية
+            if px >= 1895 and py > 5235:
+                walk_to(1912, 5242, plane=0, timeout=20)
+                walk_to(1912, 5237, plane=0, timeout=15)
+                walk_to(1905, 5234, plane=0, timeout=15)
+                try_pass_door("Gate of War")
+
+        # الوصول لموقع الصندوق في قلب الغرفة المركزية (Gift of Peace: 20656)
+        walk_to(1906, 5222, plane=0, timeout=20)
+
+        print("🖐️ التفاعل مع صندوق Gift of Peace (20656)...")
+        for attempt in range(5):
+            interact_object(20656, "Open")
+            for _ in range(6):
+                time.sleep(1)
+                handle_dialogue_and_modals()
+            if api_get("/varbits?id=2309").get("value", 0) == 1:
+                print("💰 مبروووك! تم استلام مكافأة الطابق الأول (2,000 GP + Flap emote) بنجاح!")
+                return True
+        raise SafetyStop("فشل حصد مكافأة الطابق الأول بعد التفاعل مع الصندوق (Gift of Peace: 20656)")
 
     elif action == "FLOOR_1_TO_FLOOR_2":
         print("\n--- عبور الطابق الأول إلى سلم النزول للطابق الثاني ---")
-        interact_object(20786, "Use")
-        time.sleep(2)
-        handle_dialogue_and_modals()
+        st = api_get("/state")
+        pos = st.get("player", {}).get("position", {}) if isinstance(st, dict) else {}
+        px = pos.get("x", 0)
+        # إذا كان اللاعب في غرفة البداية (بعيد عن الغرفة المركزية)، يستخدم بوابة الاختصار
+        if px < 1880:
+            interact_object(20786, "Use")
+            time.sleep(2)
+            handle_dialogue_and_modals()
         walk_to(1903, 5222, plane=0, timeout=35)
         print("🖐️ النزول عبر سلم الطابق الأول (20785)...")
         for attempt in range(4):

@@ -162,11 +162,105 @@ class Tests(unittest.TestCase):
         # Unknown region
         self.assertEqual(bot.choose_next_action({"status": "VALID", "region": "UNKNOWN_REGION"})["action"], "STOP")
 
-    def test_unimplemented_routes_stop_safely(self):
-        with self.assertRaises(SafetyStop):
-            bot.execute_step("CLAIM_FLOOR_1_REWARD")
-        with self.assertRaises(SafetyStop):
+    def test_floor_2_still_unimplemented_stops_safely(self):
+        with self.assertRaises(SafetyStop) as ctx:
             bot.execute_step("CLAIM_FLOOR_2_REWARD")
+        self.assertIn("STOP_NOT_IMPLEMENTED", str(ctx.exception))
+
+    def test_floor_1_claim_reward_full_path_success(self):
+        state_call_count = [0]
+        def mock_api_get(endpoint):
+            if endpoint == "/state":
+                return {"loggedIn": True, "player": {"position": {"x": 1859, "y": 5243, "plane": 0}}}
+            if "varbits?id=2309" in endpoint:
+                return {"value": 1}
+            return {}
+
+        with patch.object(bot, 'api_get', side_effect=mock_api_get), \
+             patch.object(bot, 'walk_to', return_value=True) as mock_walk, \
+             patch.object(bot, 'try_pass_door', return_value=True) as mock_door, \
+             patch.object(bot, 'interact_object', return_value={"success": True}) as mock_interact, \
+             patch.object(bot, 'handle_dialogue_and_modals'), \
+             patch('time.sleep'):
+            result = bot.execute_step("CLAIM_FLOOR_1_REWARD")
+            self.assertTrue(result)
+            # التأكد من التفاعل مع صندوق Gift of Peace بالمعرف المعتمد 20656
+            mock_interact.assert_called_with(20656, "Open")
+            # التأكد من عبور أبواب Gate of War
+            mock_door.assert_called_with("Gate of War")
+            # التأكد من الوصول لموقع الصندوق 1906, 5222
+            mock_walk.assert_any_call(1906, 5222, plane=0, timeout=20)
+
+    def test_floor_1_claim_reward_from_central_chamber_success(self):
+        # عندما يكون اللاعب بالفعل في الغرفة المركزية بجوار الصندوق
+        def mock_api_get(endpoint):
+            if endpoint == "/state":
+                return {"loggedIn": True, "player": {"position": {"x": 1905, "y": 5225, "plane": 0}}}
+            if "varbits?id=2309" in endpoint:
+                return {"value": 1}
+            return {}
+
+        with patch.object(bot, 'api_get', side_effect=mock_api_get), \
+             patch.object(bot, 'walk_to', return_value=True) as mock_walk, \
+             patch.object(bot, 'try_pass_door') as mock_door, \
+             patch.object(bot, 'interact_object', return_value={"success": True}) as mock_interact, \
+             patch.object(bot, 'handle_dialogue_and_modals'), \
+             patch('time.sleep'):
+            result = bot.execute_step("CLAIM_FLOOR_1_REWARD")
+            self.assertTrue(result)
+            # لا حاجة لعبور الأبواب إذا كان اللاعب بالفعل داخل الغرفة المركزية
+            mock_door.assert_not_called()
+            mock_interact.assert_called_with(20656, "Open")
+
+    def test_floor_1_door_failure_stops_safely(self):
+        with patch.object(bot, 'api_get', return_value={"player": {"position": {"x": 1859, "y": 5243, "plane": 0}}}), \
+             patch.object(bot, 'walk_to', return_value=True), \
+             patch.object(bot, 'try_pass_door', side_effect=SafetyStop("فشل التفاعل مع الباب (Gate of War)")):
+            with self.assertRaises(SafetyStop) as ctx:
+                bot.execute_step("CLAIM_FLOOR_1_REWARD")
+            self.assertIn("Gate of War", str(ctx.exception))
+
+    def test_floor_1_chest_exhaustion_stops_safely(self):
+        # عند التفاعل مع الصندوق دون استلام المكافأة (Varbit 2309 = 0)
+        def mock_api_get(endpoint):
+            if endpoint == "/state":
+                return {"loggedIn": True, "player": {"position": {"x": 1905, "y": 5225, "plane": 0}}}
+            if "varbits?id=2309" in endpoint:
+                return {"value": 0}
+            return {}
+
+        with patch.object(bot, 'api_get', side_effect=mock_api_get), \
+             patch.object(bot, 'walk_to', return_value=True), \
+             patch.object(bot, 'interact_object', return_value={"success": True}), \
+             patch.object(bot, 'handle_dialogue_and_modals'), \
+             patch('time.sleep'):
+            with self.assertRaises(SafetyStop) as ctx:
+                bot.execute_step("CLAIM_FLOOR_1_REWARD")
+            self.assertIn("فشل حصد مكافأة الطابق الأول", str(ctx.exception))
+
+    def test_floor_1_to_floor_2_direct_from_central_chamber(self):
+        # بعد حصد الصندوق في الغرفة المركزية (1906, 5222)، لا يستخدم البوابة بل ينزل بالسلم مباشرة
+        st_count = [0]
+        def mock_api_get(endpoint):
+            if endpoint == "/state":
+                st_count[0] += 1
+                if st_count[0] == 1:
+                    return {"loggedIn": True, "player": {"position": {"x": 1906, "y": 5222, "plane": 0}}}
+                return {"loggedIn": True, "player": {"position": {"x": 2020, "y": 5220, "plane": 0}}}
+            return {}
+
+        with patch.object(bot, 'api_get', side_effect=mock_api_get), \
+             patch.object(bot, 'walk_to', return_value=True) as mock_walk, \
+             patch.object(bot, 'interact_object', return_value={"success": True}) as mock_interact, \
+             patch.object(bot, 'handle_dialogue_and_modals'), \
+             patch('time.sleep'):
+            result = bot.execute_step("FLOOR_1_TO_FLOOR_2")
+            self.assertTrue(result)
+            # تأكيد عدم استدعاء بوابة الاختصار 20786
+            for call_args in mock_interact.call_args_list:
+                self.assertNotEqual(call_args[0][0], 20786)
+            # تأكيد النزول عبر سلم 20785
+            mock_interact.assert_any_call(20785, "Climb-down")
 
     def test_read_progress_validation(self):
         # When api_get fails for state
