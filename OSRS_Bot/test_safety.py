@@ -106,6 +106,93 @@ class Tests(unittest.TestCase):
             # When already completed on surface, main exits cleanly with True and does NOT attempt walking or food checking
             self.assertTrue(bot.main())
 
+    def test_fresh_account_decision(self):
+        # Surface with all 0s -> ENTER_STRONGHOLD
+        prog_surface = {"status": "VALID", "region": "SURFACE", "varbits": {2309: 0, 2310: 0, 2311: 0, 2312: 0}, "all_claimed": False}
+        self.assertEqual(bot.choose_next_action(prog_surface)["action"], "ENTER_STRONGHOLD")
+        # Floor 1 with all 0s -> CLAIM_FLOOR_1_REWARD
+        prog_f1 = {"status": "VALID", "region": "FLOOR_1", "varbits": {2309: 0, 2310: 0, 2311: 0, 2312: 0}, "all_claimed": False}
+        self.assertEqual(bot.choose_next_action(prog_f1)["action"], "CLAIM_FLOOR_1_REWARD")
+
+    def test_floor_1_done_floor_2_pending(self):
+        # Floor 1 with 2309=1 -> FLOOR_1_TO_FLOOR_2
+        prog_f1 = {"status": "VALID", "region": "FLOOR_1", "varbits": {2309: 1, 2310: 0, 2311: 0, 2312: 0}, "all_claimed": False}
+        self.assertEqual(bot.choose_next_action(prog_f1)["action"], "FLOOR_1_TO_FLOOR_2")
+        # Floor 2 with 2309=1, 2310=0 -> CLAIM_FLOOR_2_REWARD
+        prog_f2 = {"status": "VALID", "region": "FLOOR_2", "varbits": {2309: 1, 2310: 0, 2311: 0, 2312: 0}, "all_claimed": False}
+        self.assertEqual(bot.choose_next_action(prog_f2)["action"], "CLAIM_FLOOR_2_REWARD")
+
+    def test_non_sequential_rewards_stops(self):
+        # In Floor 2 with Floor 1 missing -> STOP
+        prog = {"status": "VALID", "region": "FLOOR_2", "varbits": {2309: 0, 2310: 0, 2311: 0, 2312: 0}}
+        self.assertEqual(bot.choose_next_action(prog)["action"], "STOP")
+        # In Floor 3 with Floor 1 missing -> STOP
+        prog3 = {"status": "VALID", "region": "FLOOR_3", "varbits": {2309: 0, 2310: 1, 2311: 0, 2312: 0}}
+        self.assertEqual(bot.choose_next_action(prog3)["action"], "STOP")
+        # In Floor 4 with Floor 2 missing -> STOP
+        prog4 = {"status": "VALID", "region": "FLOOR_4", "varbits": {2309: 1, 2310: 0, 2311: 1, 2312: 0}}
+        self.assertEqual(bot.choose_next_action(prog4)["action"], "STOP")
+
+    def test_resume_from_every_floor(self):
+        # Floor 3 pending reward -> CLAIM_FLOOR_3_REWARD
+        prog3_claim = {"status": "VALID", "region": "FLOOR_3", "varbits": {2309: 1, 2310: 1, 2311: 0, 2312: 0}}
+        self.assertEqual(bot.choose_next_action(prog3_claim)["action"], "CLAIM_FLOOR_3_REWARD")
+        # Floor 3 reward claimed -> FLOOR_3_TO_FLOOR_4
+        prog3_next = {"status": "VALID", "region": "FLOOR_3", "varbits": {2309: 1, 2310: 1, 2311: 1, 2312: 0}}
+        self.assertEqual(bot.choose_next_action(prog3_next)["action"], "FLOOR_3_TO_FLOOR_4")
+        # Floor 4 pending boots -> CLAIM_FLOOR_4_REWARD
+        prog4_claim = {"status": "VALID", "region": "FLOOR_4", "varbits": {2309: 1, 2310: 1, 2311: 1, 2312: 0}}
+        self.assertEqual(bot.choose_next_action(prog4_claim)["action"], "CLAIM_FLOOR_4_REWARD")
+        # Floor 4 boots claimed -> EXIT_FLOOR_4_TO_SURFACE
+        prog4_exit = {"status": "VALID", "region": "FLOOR_4", "varbits": {2309: 1, 2310: 1, 2311: 1, 2312: 1}}
+        self.assertEqual(bot.choose_next_action(prog4_exit)["action"], "EXIT_FLOOR_4_TO_SURFACE")
+
+    def test_surface_completed_with_and_without_boots(self):
+        # Surface completed with boots in inventory -> GO_TO_BANK
+        prog_bank = {"status": "VALID", "region": "SURFACE", "all_claimed": True, "has_boots_in_inventory": True}
+        self.assertEqual(bot.choose_next_action(prog_bank)["action"], "GO_TO_BANK")
+        # Surface completed without boots in inventory -> STOP_COMPLETED
+        prog_done = {"status": "VALID", "region": "SURFACE", "all_claimed": True, "has_boots_in_inventory": False}
+        self.assertEqual(bot.choose_next_action(prog_done)["action"], "STOP_COMPLETED")
+
+    def test_unknown_state_and_region_stops(self):
+        # Invalid status
+        self.assertEqual(bot.choose_next_action({"status": "UNKNOWN"})["action"], "STOP")
+        self.assertEqual(bot.choose_next_action(None)["action"], "STOP")
+        # Unknown region
+        self.assertEqual(bot.choose_next_action({"status": "VALID", "region": "UNKNOWN_REGION"})["action"], "STOP")
+
+    def test_unimplemented_routes_stop_safely(self):
+        with self.assertRaises(SafetyStop):
+            bot.execute_step("CLAIM_FLOOR_1_REWARD")
+        with self.assertRaises(SafetyStop):
+            bot.execute_step("CLAIM_FLOOR_2_REWARD")
+
+    def test_read_progress_validation(self):
+        # When api_get fails for state
+        with patch.object(bot, 'api_get', return_value={'error': 'connection failed'}):
+            res = bot.read_progress()
+            self.assertEqual(res["status"], "UNKNOWN")
+
+        # When api_get returns valid state in Floor 3 and varbits
+        def mock_api(endpoint):
+            if endpoint == '/state':
+                return {'loggedIn': True, 'player': {'position': {'x': 2144, 'y': 5281, 'plane': 0}}}
+            if 'varbits' in endpoint:
+                return {'value': 1}
+            if endpoint == '/inventory':
+                return {'items': [{'id': 9005, 'name': 'Fancy boots', 'quantity': 1}]}
+            if endpoint == '/skills':
+                return {'skills': [{'name': 'Hitpoints', 'boostedLevel': 10}]}
+            return {}
+
+        with patch.object(bot, 'api_get', side_effect=mock_api):
+            res = bot.read_progress()
+            self.assertEqual(res["status"], "VALID")
+            self.assertEqual(res["region"], "FLOOR_3")
+            self.assertTrue(res["has_boots_in_inventory"])
+            self.assertTrue(res["all_claimed"])
+
 if __name__ == '__main__': unittest.main()
 
 
