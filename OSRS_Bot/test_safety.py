@@ -81,13 +81,21 @@ class Tests(unittest.TestCase):
             self.assertFalse(bot.is_all_rewards_claimed())
 
     def test_verify_bank_has_boots(self):
-        # By ID 9005
-        self.assertTrue(bot.verify_bank_has_boots({'items': [{'id': 9005, 'name': 'Fancy boots'}]}))
-        # By Name
-        self.assertTrue(bot.verify_bank_has_boots({'items': [{'id': 1234, 'name': 'Fancy boots'}]}))
-        # Empty or missing
-        self.assertFalse(bot.verify_bank_has_boots({'items': [{'id': 995, 'name': 'Coins'}]}))
+        # By ID 9005 with positive quantity
+        self.assertTrue(bot.verify_bank_has_boots({'items': [{'id': 9005, 'name': 'Fancy boots', 'quantity': 1}]}))
+        # By exact Name with positive quantity
+        self.assertTrue(bot.verify_bank_has_boots({'items': [{'id': 1234, 'name': 'Fancy boots', 'quantity': 2}]}))
+        # Zero or negative quantity rejected
+        self.assertFalse(bot.verify_bank_has_boots({'items': [{'id': 9005, 'name': 'Fancy boots', 'quantity': 0}]}))
+        self.assertFalse(bot.verify_bank_has_boots({'items': [{'id': 9005, 'name': 'Fancy boots', 'quantity': -1}]}))
+        # Non-integer quantity rejected
+        self.assertFalse(bot.verify_bank_has_boots({'items': [{'id': 9005, 'name': 'Fancy boots', 'quantity': '1'}]}))
+        # Substring or different item rejected
+        self.assertFalse(bot.verify_bank_has_boots({'items': [{'id': 9999, 'name': 'Not fancy boots extra', 'quantity': 1}]}))
+        self.assertFalse(bot.verify_bank_has_boots({'items': [{'id': 995, 'name': 'Coins', 'quantity': 100}]}))
+        # Empty or invalid structure rejected
         self.assertFalse(bot.verify_bank_has_boots({}))
+        self.assertFalse(bot.verify_bank_has_boots({'items': 'not_a_list'}))
         self.assertFalse(bot.verify_bank_has_boots(None))
 
     def test_already_completed_stops_early(self):

@@ -60,11 +60,22 @@ def is_all_rewards_claimed():
     return all(v == 1 for v in vbs)
 
 def verify_bank_has_boots(bank_data):
-    """التحقق الصريح من وجود Fancy boots داخل بيانات البنك"""
+    """التحقق الصريح والمشدد من وجود Fancy boots بكمية موجبة داخل بيانات البنك"""
     if not isinstance(bank_data, dict):
         return False
-    items = bank_data.get("items", [])
-    return any(it.get("id") == 9005 or "fancy boots" in str(it.get("name", "")).lower() for it in items)
+    items = bank_data.get("items")
+    if not isinstance(items, list):
+        return False
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        iid = it.get("id")
+        name = str(it.get("name", "")).strip().casefold()
+        qty = it.get("quantity", 0)
+        if (iid == 9005 or name == "fancy boots") and isinstance(qty, int) and qty > 0:
+            return True
+    return False
+
 
 def handle_dialogue_and_modals():
     # 1. شباك التحذير للسلالم (groupId: 579, childId: 17)
@@ -412,7 +423,10 @@ def main():
                     time.sleep(1)
                     handle_dialogue_and_modals()
                     # واجهة اختيار الجزمة (Make-All Interface groupId: 270, childId: 15) تظهر حصراً عند التفاعل مع المهد
-                    api_post("/widgets/click", {"groupId": 270, "childId": 15})
+                    click_res = api_post("/widgets/click", {"groupId": 270, "childId": 15})
+                    if isinstance(click_res, dict) and click_res.get("clicked") is True:
+                        print("👟 تم النقر بنجاح على ويدجت اختيار Fancy boots!")
+
                 vb4 = api_get("/varbits?id=2312").get("value", 0)
                 if vb4 == 1:
                     print("👟 مبروووك! تم اختيار وحصد Fancy Boots بنجاح!")
@@ -459,20 +473,27 @@ def main():
 
     # التحقق الفعلي من محتويات البنك بعد الإيداع
     bank_data = api_get("/bank")
-    has_boots = verify_bank_has_boots(bank_data)
-    items = bank_data.get("items", []) if isinstance(bank_data, dict) else []
-    coin_count = next((it.get("quantity", 0) for it in items if it.get("id") == 995 or "coin" in str(it.get("name", "")).lower()), 0)
+    if not isinstance(bank_data, dict) or "items" not in bank_data or not isinstance(bank_data.get("items"), list):
+        has_boots = False
+        coin_display = "الرصيد غير معروف (فشل استعلام البنك)"
+    else:
+        has_boots = verify_bank_has_boots(bank_data)
+        items = bank_data.get("items", [])
+        coin_qty = next((it.get("quantity") for it in items if it.get("id") == 995 and isinstance(it.get("quantity"), int)), None)
+        coin_display = f"{coin_qty} GP" if coin_qty is not None else "0 GP (لم يُرصد ذهب في الخزينة)"
+
     api_post("/bank/close", {})
 
     print("\n" + "=" * 65)
     if has_boots:
-        print("✅ تم التحقق الفعلي من وجود Fancy boots داخل البنك!")
+        print("✅ تم التحقق الفعلي من وجود Fancy boots بكمية صالحة داخل البنك!")
     else:
         print("⚠️ تنبيه: لم يتم رصد Fancy boots داخل بيانات البنك بعد الإيداع!")
-    print(f"💰 رصيد الذهب المسجل بالبنك: {coin_count} GP.")
+    print(f"💰 رصيد الذهب المسجل بالبنك: {coin_display}.")
     print("=" * 65)
     input("اضغط Enter للإغلاق...")
     return has_boots
+
 
 
 # Fail-closed overrides; latest upstream route is retained, not certified.
