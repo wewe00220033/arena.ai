@@ -23,8 +23,11 @@
   - [reports/2026-10-21-task-01.md](reports/2026-10-21-task-01.md)
   - [reports/2026-10-21-task-02-breakthrough-boots-claimed.md](reports/2026-10-21-task-02-breakthrough-boots-claimed.md)
   - [reports/2026-10-21-task-03-bank-verified-and-code-hardened.md](reports/2026-10-21-task-03-bank-verified-and-code-hardened.md)
+  - [reports/2026-10-21-task-04-reviewer-audit-selective-merge.md](reports/2026-10-21-task-04-reviewer-audit-selective-merge.md)
 - اختبار المحاكاة: `PASS_SIMULATION` (17/17).
 - الاختبار الحي: `PASS_LIVE` (البنك يحوي Fancy boots id 9005، الذهب 28 GP، الـ Varbits الأربعة = 1).
+- مراجعة الوكيل المدقق (Reviewer Audit): `PASS_AUDIT` (تطابق SHA-256 بنسبة 100% بين `arena.ai` و `OSRS`، واعتماد الدمج الانتقائي).
 
 ## المطلوب من Arena AI
-- مراجعة الدمج الانتقائي المحصن واعتماد النتيجة لإغلاق التحديث.
+- الاطلاع على تقرير التدقيق المستقل [task-04](reports/2026-10-21-task-04-reviewer-audit-selective-merge.md).
+- اعتماد الدمج الانتقائي والنسخة المتطابقة الحالية (`650db7e` / `cc38048`) لإغلاق ملف حصن الأمان نهائياً بنجاح.
