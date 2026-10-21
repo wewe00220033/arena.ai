@@ -15,5 +15,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: python -m unittest -v test_safety.py
-      - run: python -m py_compile run_stronghold_bot.py safety.py osrs_ai_solver.py
+      - working-directory: OSRS_Bot
+        run: python -m unittest -v test_safety.py
+      - working-directory: OSRS_Bot
+        run: python -m py_compile run_stronghold_bot.py safety.py osrs_ai_solver.py

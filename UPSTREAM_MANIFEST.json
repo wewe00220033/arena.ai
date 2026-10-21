@@ -1,0 +1,232 @@
+{
+  "upstream_url": "https://github.com/wewe00220033/OSRS",
+  "upstream_commit": "725665d9f0c6a7ab5af5369b973397efa5f9309e",
+  "source_file_count": 45,
+  "files": [
+    {
+      "source": ".gitignore",
+      "destination": ".gitignore",
+      "modified": true
+    },
+    {
+      "source": "01_دليل_طرق_الربح_والمصادر_المعتمدة.md",
+      "destination": "01_دليل_طرق_الربح_والمصادر_المعتمدة.md",
+      "modified": false
+    },
+    {
+      "source": "OSRS_Bot/osrs_ai_solver.py",
+      "destination": "OSRS_Bot/osrs_ai_solver.py",
+      "modified": true
+    },
+    {
+      "source": "OSRS_Bot/run_stronghold_bot.py",
+      "destination": "OSRS_Bot/run_stronghold_bot.py",
+      "modified": true
+    },
+    {
+      "source": "OSRS_Bot/run_stronghold_bot.py.anchor",
+      "destination": "OSRS_Bot/run_stronghold_bot.py.anchor",
+      "modified": false
+    },
+    {
+      "source": "OSRS_Bot/إصلاح_تحديثات_الويندوز.bat",
+      "destination": "OSRS_Bot/إصلاح_تحديثات_الويندوز.bat",
+      "modified": false
+    },
+    {
+      "source": "OSRS_Bot/تحديث_فهرس_المحادثات_الكامل.bat",
+      "destination": "OSRS_Bot/تحديث_فهرس_المحادثات_الكامل.bat",
+      "modified": false
+    },
+    {
+      "source": "OSRS_Bot/تشغيل_إصلاح_الكيبورد.bat",
+      "destination": "OSRS_Bot/تشغيل_إصلاح_الكيبورد.bat",
+      "modified": false
+    },
+    {
+      "source": "OSRS_Bot/تشغيل_البوت.bat",
+      "destination": "OSRS_Bot/تشغيل_البوت.bat",
+      "modified": false
+    },
+    {
+      "source": "OSRS_Bot/تشغيل_بوت_السترونج_هولد.bat",
+      "destination": "OSRS_Bot/تشغيل_بوت_السترونج_هولد.bat",
+      "modified": true
+    },
+    {
+      "source": "OSRS_Bot/تفعيل_تحديثات_الويندوز.bat",
+      "destination": "OSRS_Bot/تفعيل_تحديثات_الويندوز.bat",
+      "modified": false
+    },
+    {
+      "source": "OSRS_Bot/فك_قفل_التحديثات.bat",
+      "destination": "OSRS_Bot/فك_قفل_التحديثات.bat",
+      "modified": false
+    },
+    {
+      "source": "OSRS_Economic_Modeling_Study_AR.md",
+      "destination": "OSRS_Economic_Modeling_Study_AR.md",
+      "modified": false
+    },
+    {
+      "source": "README.md",
+      "destination": "README_UPSTREAM.md",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_quests/TradeUnlockConfig.java",
+      "destination": "microbot_stage0_quests/TradeUnlockConfig.java",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_quests/TradeUnlockOverlay.java",
+      "destination": "microbot_stage0_quests/TradeUnlockOverlay.java",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_quests/TradeUnlockPlugin.java",
+      "destination": "microbot_stage0_quests/TradeUnlockPlugin.java",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_quests/TradeUnlockScript.java",
+      "destination": "microbot_stage0_quests/TradeUnlockScript.java",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_stronghold/StrongholdConfig.java",
+      "destination": "microbot_stage0_stronghold/StrongholdConfig.java",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_stronghold/StrongholdOverlay.java",
+      "destination": "microbot_stage0_stronghold/StrongholdOverlay.java",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_stronghold/StrongholdPlugin.java",
+      "destination": "microbot_stage0_stronghold/StrongholdPlugin.java",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_stronghold/StrongholdScript.java",
+      "destination": "microbot_stage0_stronghold/StrongholdScript.java",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_totallevel/TotalLevelChecks.java",
+      "destination": "microbot_stage0_totallevel/TotalLevelChecks.java",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_totallevel/TotalLevelConfig.java",
+      "destination": "microbot_stage0_totallevel/TotalLevelConfig.java",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_totallevel/TotalLevelOverlay.java",
+      "destination": "microbot_stage0_totallevel/TotalLevelOverlay.java",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_totallevel/TotalLevelPlugin.java",
+      "destination": "microbot_stage0_totallevel/TotalLevelPlugin.java",
+      "modified": false
+    },
+    {
+      "source": "microbot_stage0_totallevel/TotalLevelScript.java",
+      "destination": "microbot_stage0_totallevel/TotalLevelScript.java",
+      "modified": false
+    },
+    {
+      "source": "net/runelite/client/plugins/microbot/stronghold/StrongholdConfig.java",
+      "destination": "net/runelite/client/plugins/microbot/stronghold/StrongholdConfig.java",
+      "modified": false
+    },
+    {
+      "source": "net/runelite/client/plugins/microbot/stronghold/StrongholdOverlay.java",
+      "destination": "net/runelite/client/plugins/microbot/stronghold/StrongholdOverlay.java",
+      "modified": false
+    },
+    {
+      "source": "net/runelite/client/plugins/microbot/stronghold/StrongholdPlugin.java",
+      "destination": "net/runelite/client/plugins/microbot/stronghold/StrongholdPlugin.java",
+      "modified": false
+    },
+    {
+      "source": "net/runelite/client/plugins/microbot/stronghold/StrongholdScript.java",
+      "destination": "net/runelite/client/plugins/microbot/stronghold/StrongholdScript.java",
+      "modified": false
+    },
+    {
+      "source": "net/runelite/client/plugins/microbot/totallevel/TotalLevelConfig.java",
+      "destination": "net/runelite/client/plugins/microbot/totallevel/TotalLevelConfig.java",
+      "modified": false
+    },
+    {
+      "source": "net/runelite/client/plugins/microbot/totallevel/TotalLevelOverlay.java",
+      "destination": "net/runelite/client/plugins/microbot/totallevel/TotalLevelOverlay.java",
+      "modified": false
+    },
+    {
+      "source": "net/runelite/client/plugins/microbot/totallevel/TotalLevelPlugin.java",
+      "destination": "net/runelite/client/plugins/microbot/totallevel/TotalLevelPlugin.java",
+      "modified": false
+    },
+    {
+      "source": "net/runelite/client/plugins/microbot/totallevel/TotalLevelScript.java",
+      "destination": "net/runelite/client/plugins/microbot/totallevel/TotalLevelScript.java",
+      "modified": false
+    },
+    {
+      "source": "net/runelite/client/plugins/microbot/tradeunlock/TradeUnlockConfig.java",
+      "destination": "net/runelite/client/plugins/microbot/tradeunlock/TradeUnlockConfig.java",
+      "modified": false
+    },
+    {
+      "source": "net/runelite/client/plugins/microbot/tradeunlock/TradeUnlockOverlay.java",
+      "destination": "net/runelite/client/plugins/microbot/tradeunlock/TradeUnlockOverlay.java",
+      "modified": false
+    },
+    {
+      "source": "net/runelite/client/plugins/microbot/tradeunlock/TradeUnlockPlugin.java",
+      "destination": "net/runelite/client/plugins/microbot/tradeunlock/TradeUnlockPlugin.java",
+      "modified": false
+    },
+    {
+      "source": "net/runelite/client/plugins/microbot/tradeunlock/TradeUnlockScript.java",
+      "destination": "net/runelite/client/plugins/microbot/tradeunlock/TradeUnlockScript.java",
+      "modified": false
+    },
+    {
+      "source": "osrs_ge_radar copy.json",
+      "destination": "osrs_ge_radar copy.json",
+      "modified": false
+    },
+    {
+      "source": "osrs_ge_radar.py",
+      "destination": "osrs_ge_radar.py",
+      "modified": false
+    },
+    {
+      "source": "osrs_radar_live.json",
+      "destination": "osrs_radar_live.json",
+      "modified": false
+    },
+    {
+      "source": "جبان.md",
+      "destination": "جبان.md",
+      "modified": false
+    },
+    {
+      "source": "جدول_الخطوات_وبروتوكول_العمل_المشترك.md",
+      "destination": "جدول_الخطوات_وبروتوكول_العمل_المشترك.md",
+      "modified": false
+    },
+    {
+      "source": "شاطر.md",
+      "destination": "شاطر.md",
+      "modified": false
+    }
+  ]
+}
