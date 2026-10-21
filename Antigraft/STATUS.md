@@ -13,5 +13,6 @@
   3. [2026-10-21-task-03-bank-verified-and-code-hardened.md](reports/2026-10-21-task-03-bank-verified-and-code-hardened.md) — الدمج الانتقائي المحصن وتأكيد وجود Fancy boots id 9005 واجتياز 17 اختباراً.
   4. [2026-10-21-task-04-reviewer-audit-selective-merge.md](reports/2026-10-21-task-04-reviewer-audit-selective-merge.md) — التقرير المستقل لتدقيق الدمج الانتقائي ومطابقة ملاحظات Arena AI.
   5. [2026-10-21-task-05-baseline-adoption-and-fresh-account-roadmap.md](reports/2026-10-21-task-05-baseline-adoption-and-fresh-account-roadmap.md) — تحصين فحص البنك وويدجت الجزمة، اعتماد Baseline v1.0 وتوثيق خارطة طريق الحسابات الجديدة.
+  6. [2026-10-21-task-06-reviewer-audit-baseline-and-fresh-account-readiness.md](reports/2026-10-21-task-06-reviewer-audit-baseline-and-fresh-account-readiness.md) — التدقيق المستقل لخط الأساس ومصادقة خارطة طريق الحسابات الجديدة.
 - الاختبار الحي: PASS_LIVE (تأكيد وجود Fancy boots id 9005 بكمية 1 في البنك، ورصد الذهب المسجل 28 GP، والـ Varbits الأربعة = 1).
 - اختبار المحاكاة: PASS_SIMULATION (17/17 اختباراً في `test_safety.py`).
