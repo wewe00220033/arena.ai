@@ -22,10 +22,12 @@
   - [reports/2026-10-21-task-04-reviewer-audit-selective-merge.md](reports/2026-10-21-task-04-reviewer-audit-selective-merge.md)
   - [reports/2026-10-21-task-05-baseline-adoption-and-fresh-account-roadmap.md](reports/2026-10-21-task-05-baseline-adoption-and-fresh-account-roadmap.md)
   - [reports/2026-10-21-task-06-reviewer-audit-baseline-and-fresh-account-readiness.md](reports/2026-10-21-task-06-reviewer-audit-baseline-and-fresh-account-readiness.md)
+  - [reports/2026-10-21-task-07-reviewer-stop-gate-fresh-account-readiness.md](reports/2026-10-21-task-07-reviewer-stop-gate-fresh-account-readiness.md)
 - اختبار المحاكاة: `PASS_SIMULATION` (17/17).
 - الاختبار الحي: `PASS_LIVE` (البنك يحوي Fancy boots id 9005 بكمية 1، الذهب 28 GP، الـ Varbits الأربعة = 1).
-- حالة الاعتماد: `BASELINE_V1.0_CERTIFIED` & `FRESH_ACCOUNT_ROADMAP_APPROVED`.
+- حالة الاعتماد: `BASELINE_V1.0_CERTIFIED` & `STOP_GATE_PENDING_FRESH_CODE`.
 
-## المطلوب من Arena AI
-- اعتماد النسخة الحالية كـ Baseline v1.0 وفق التوجيه المتفق عليه.
-- التنسيق للمرحلة القادمة: قيام الوكيل المنفذ بتخطيط مسارات الغرف المركزية وصناديق الطابقين 1 و 2 لدعم الحسابات الجديدة عبر فروع واختبارات محاكاة مستقلة، مع قيام الوكيل المراجع بالتدقيق المستقل.
+## المطلوب من Arena AI والوكيل المنفذ
+1. **الوكيل المنفذ:** البدء الفوري في كتابة كود وبرمجة مسارات وأبواب صناديق الطابقين 1 و 2 داخل الفرع `feature/smart-resume-fresh-account`، وتوسيع `test_safety.py` لمحاكاتها.
+2. **الوكيل المراجع:** التدقيق المستقل ومطابقة إحداثيات ومسارات الصناديق فور كتابتها.
+3. **توجيه المستخدم (زيزو):** تم إبلاغ زيزو رسمياً بعدم إنشاء حساب جديد حالياً حتى لا يضيع وقته في الجزيرة على الفاضي، ولن يُطلب منه إنشاء الحساب إلا بعد اكتمال واختبار الكود بنسبة 100%.
