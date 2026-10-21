@@ -1,12 +1,12 @@
 # حالة Antigraft
 
 - author: Antigraft
-- commit الأساس: `1bcbb8b` (على فرع `feature/smart-resume-fresh-account`)
-- الحالة: FLOOR_1_NEEDS_MODIFICATION — رصد خلل شروط المحطات التتابعية في مسار الطابق الأول (تخطي محطة 2 بسبب متغير الإحداثيات الراكد) ومطلوب تصحيحه من المنفذ قبل أي اختبار حي.
-- المهمة الحالية والملفات المحجوزة: الوكيل المنفذ مكلف بتصحيح تسلسل محطات الطابق الأول في run_stronghold_bot.py.
+- commit الأساس: `fd22e65` (على فرع `feature/smart-resume-fresh-account`)
+- الحالة: FLOOR_1_SEQUENTIAL_FIXED — تم إصلاح خلل الإحداثيات الراكدة في مسار الطابق الأول باعتماد مقطع البداية الأحادي start_stage والتسلسل الخطي الحتمي مع التحقق من عبور كل باب ومنع طلب الصندوق دون إثبات الدخول للغرفة المركزية، وصون حارس الطابق الثاني STOP_NOT_IMPLEMENTED، واجتياز 34/34 اختبار سلامة.
+- المهمة الحالية والملفات المحجوزة: مهمة المنفّذ لإصلاح الطابق الأول اكتملت وموثقة؛ لا توجد ملفات محجوزة.
 - حدود الاعتماد والتغطية:
-  - ✅ **معتمد ومحصن:** قراءة الحالة الحية `read_progress()`، دالة القرار المجردة `choose_next_action()`، الاستئناف الذكي، سلم الطابق الأول المباشر، وصندوق 20656 المعتمد، وحزمة الـ 30 اختباراً.
-  - ⚠️ **حدود الاستخدام (Important Limitation):** مسار الطابق الأول يحتاج تعديلاً برمجياً لمنع تخطي المحطات بسبب الإحداثيات القديمة، ومسار الطابق الثاني لا يزال قيد الحظر بـ `SafetyStop("STOP_NOT_IMPLEMENTED")`. الحساب الجديد ما زال محظوراً.
+  - ✅ **معتمد ومحصن:** قراءة الحالة الحية `read_progress()`، دالة القرار المجردة `choose_next_action()`، مسار مكافأة الطابق الأول الخطي التتابعي مع التحقق بعد كل باب، الاستئناف الذكي من كافة الطوابق والمحطات، خروج السطح والإيداع المشدد في البنك، وحزمة الـ 34 اختباراً.
+  - ⚠️ **حدود الاستخدام (Important Limitation):** مسار غرفة صندوق الطابق الثاني يتوقف بـ `SafetyStop("STOP_NOT_IMPLEMENTED")` عند طلبه برمجياً لحين برمجته ومراجعته بعد اعتماد هذا الإصلاح. الحساب الجديد ما زال محظوراً.
 - التقارير المعتمدة:
   1. [2026-10-21-task-01.md](reports/2026-10-21-task-01.md)
   2. [2026-10-21-task-02-breakthrough-boots-claimed.md](reports/2026-10-21-task-02-breakthrough-boots-claimed.md)
@@ -18,5 +18,6 @@
   8. [2026-10-21-task-08-reviewer-contract-audit-and-stop-not-implemented.md](reports/2026-10-21-task-08-reviewer-contract-audit-and-stop-not-implemented.md)
   9. [2026-10-21-task-09-implementer-floor-1-reward-path-and-tests.md](reports/2026-10-21-task-09-implementer-floor-1-reward-path-and-tests.md)
   10. [2026-10-21-task-10-reviewer-audit-floor-1-stale-coordinate-defect.md](reports/2026-10-21-task-10-reviewer-audit-floor-1-stale-coordinate-defect.md)
-- اختبار المحاكاة: PASS_SIMULATION (30/30 اختباراً في `test_safety.py`).
+  11. [2026-10-21-task-11-implementer-fix-floor-1-stale-coords-and-sequential-stages.md](reports/2026-10-21-task-11-implementer-fix-floor-1-stale-coords-and-sequential-stages.md)
+- اختبار المحاكاة: PASS_SIMULATION (34/34 اختباراً في `test_safety.py`).
 - الاختبار الحي: PASS_LIVE (محتويات البنك والـ Varbits الأربعة = 1 على الحساب التجريبي).

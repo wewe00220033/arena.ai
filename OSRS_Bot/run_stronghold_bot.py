@@ -339,36 +339,67 @@ def execute_step(action):
         px = pos.get("x", 0)
         py = pos.get("y", 0)
 
-        # السير عبر المحطات والأبواب المعتمدة فقط إذا كان اللاعب خارج الغرفة المركزية
-        if px < 1895 or py > 5235:
-            # محطة 1: بوابة مخرج غرفة البداية
-            if px < 1865 and py >= 5232:
-                walk_to(1859, 5232, plane=0, timeout=25)
-                try_pass_door("Gate of War")
+        # 1. تحديد مقطع البداية بدقة من منطقة وجود اللاعب الحالية
+        if 1855 <= px <= 1867 and py >= 5232:
+            start_stage = 0  # غرفة البداية
+        elif 1855 <= px <= 1872 and 5220 <= py <= 5231:
+            start_stage = 1  # الغرفة الجنوبية الغربية
+        elif 1873 <= px <= 1890 and py >= 5235:
+            start_stage = 2  # الممر الشمالي
+        elif 1891 <= px <= 1925 and py >= 5233:
+            start_stage = 3  # الغرفة الشمالية الشرقية ومدخل الغرفة المركزية
+        elif 1895 <= px <= 1920 and 5215 <= py <= 5232:
+            start_stage = 4  # الغرفة المركزية (غرفة الصندوق)
+        else:
+            raise SafetyStop(f"موقع اللاعب في الطابق الأول خارج النطاق الموثق للمحطات: {(px, py)}")
 
-            # محطة 2: الغرفة الجنوبية الغربية
-            if px < 1875 and py < 5235:
-                walk_to(1864, 5227, plane=0, timeout=15)
-                walk_to(1870, 5227, plane=0, timeout=15)
-                try_pass_door("Gate of War")
+        # 2. تنفيذ المقاطع التالية بالترتيب الخطي مع التحقق من الوصول لنهاية كل مقطع
+        if start_stage <= 0:
+            print("📍 [المقطع 1/4] التحرك نحو مخرج غرفة البداية وعبور الباب...")
+            walk_to(1859, 5232, plane=0, timeout=25)
+            try_pass_door("Gate of War")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("y", 9999) > 5231:
+                raise SafetyStop(f"فشل إثبات عبور باب غرفة البداية، ما زال اللاعب عند: {after_pos}")
 
-            # محطة 3: الممر الشمالي
-            if px < 1895 and py >= 5235:
-                walk_to(1875, 5239, plane=0, timeout=20)
-                walk_to(1880, 5240, plane=0, timeout=15)
-                walk_to(1883, 5243, plane=0, timeout=15)
-                try_pass_door("Gate of War")
+        if start_stage <= 1:
+            print("📍 [المقطع 2/4] عبور الغرفة الجنوبية الغربية نحو مخرجها...")
+            walk_to(1864, 5227, plane=0, timeout=15)
+            walk_to(1870, 5227, plane=0, timeout=15)
+            try_pass_door("Gate of War")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("y", 0) < 5235:
+                raise SafetyStop(f"فشل إثبات عبور باب الغرفة الجنوبية الغربية، اللاعب عند: {after_pos}")
 
-            # محطة 4: الغرفة الشمالية الشرقية ومدخل الغرفة المركزية
-            if px >= 1895 and py > 5235:
-                walk_to(1912, 5242, plane=0, timeout=20)
-                walk_to(1912, 5237, plane=0, timeout=15)
-                walk_to(1905, 5234, plane=0, timeout=15)
-                try_pass_door("Gate of War")
+        if start_stage <= 2:
+            print("📍 [المقطع 3/4] عبور الممر الشمالي نحو بوابته الشرقية...")
+            walk_to(1875, 5239, plane=0, timeout=20)
+            walk_to(1880, 5240, plane=0, timeout=15)
+            walk_to(1883, 5243, plane=0, timeout=15)
+            try_pass_door("Gate of War")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("x", 0) < 1891:
+                raise SafetyStop(f"فشل إثبات عبور باب الممر الشمالي، اللاعب عند: {after_pos}")
 
-        # الوصول لموقع الصندوق في قلب الغرفة المركزية (Gift of Peace: 20656)
+        if start_stage <= 3:
+            print("📍 [المقطع 4/4] عبور الغرفة الشمالية الشرقية نحو باب الغرفة المركزية...")
+            walk_to(1912, 5242, plane=0, timeout=20)
+            walk_to(1912, 5237, plane=0, timeout=15)
+            walk_to(1905, 5234, plane=0, timeout=15)
+            try_pass_door("Gate of War")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("y", 9999) > 5232 or after_pos.get("x", 0) < 1895:
+                raise SafetyStop(f"فشل إثبات دخول الغرفة المركزية، اللاعب عند: {after_pos}")
+
+        # 3. الوصول لموقع الصندوق في قلب الغرفة المركزية (Gift of Peace: 20656)
+        print("📍 الوصول لصندوق Gift of Peace في الغرفة المركزية...")
         walk_to(1906, 5222, plane=0, timeout=20)
 
+        # 4. فتح الصندوق واستلام المكافأة مع حل الأسئلة الأمنية
         print("🖐️ التفاعل مع صندوق Gift of Peace (20656)...")
         for attempt in range(5):
             interact_object(20656, "Open")
