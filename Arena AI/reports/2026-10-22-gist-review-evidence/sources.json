@@ -1,0 +1,53 @@
+{
+  "updated_at": "2026-10-22T16:47:41Z",
+  "revision": "0600cd961deeb07f9d9c422768eb821ff9c16ae3",
+  "files": [
+    {
+      "name": "للمعمارية.md",
+      "bytes": 382640
+    }
+  ],
+  "gist_url": "https://gist.github.com/wewe00220033/9ee35367b892b836456eb24fd91bfd5d",
+  "file_sha256": "03818a64f49a55b52cd3463df847232af60db96ca20ffe42d12fb7ed878f9db6",
+  "line_count": 4771,
+  "arena_main": "92671b54374899253bcb19ac16206684096c81d1",
+  "arena_feature": "bbc34bf4682b867564c6e0443078049aeaff8b74",
+  "osrs_main": "fd0d5eae4f7c9115033c6a8624e34e5cbf4b06d5",
+  "documents": [
+    {
+      "path": "OSRS_Bot/وثائق_المحركات/00_المرجع_المعماري_الموحد.md",
+      "lines": 96,
+      "sha256": "9f33242d37900ce287a347a2f7bfdbc6e841c361df8aa3ab43a114f850650b92"
+    },
+    {
+      "path": "OSRS_Bot/وثائق_المحركات/01_محرك_عامل_المهمة_Task_Worker_Adapter.md",
+      "lines": 245,
+      "sha256": "b09890945f2c0df374af8bb70eda654beaea268a0ac4ffeeb8191db95cd4547d"
+    },
+    {
+      "path": "OSRS_Bot/وثائق_المحركات/02_محرك_إدارة_الحسابات_Accounts_Manager.md",
+      "lines": 245,
+      "sha256": "728143e5b25d3a0b21d6ffccf7be5bdc8a294512f3ad20ce0dbf3f3d62b27359"
+    },
+    {
+      "path": "OSRS_Bot/وثائق_المحركات/03_محرك_حارس_التليجرام_والسجلات_Telegram_Logs_Guardian.md",
+      "lines": 222,
+      "sha256": "e779ec220b937d27e7d5c2e39c2af062db806033011a0836369f912f4e314115"
+    },
+    {
+      "path": "OSRS_Bot/وثائق_المحركات/04_محرك_المايسترو_ومشرف_التشغيل_Master_Orchestrator.md",
+      "lines": 224,
+      "sha256": "64ec3f63b84838f36d6804bfa6eb1a8d7178683ebf7466e799e63a634bc382e9"
+    },
+    {
+      "path": "OSRS_Bot/وثائق_المحركات/05_محرك_الذكاء_الاصطناعي_AI_Triage_Solver.md",
+      "lines": 119,
+      "sha256": "646063652ca830b53bfb76fad04da27f1ccbc0f0f84c7105dcbbf8727946ac06"
+    },
+    {
+      "path": "OSRS_Bot/وثائق_المحركات/مصفوفة_السكربتات_المفتوحة_وخريطة_المراحل.md",
+      "lines": 116,
+      "sha256": "c77bcaf2a3194818f1ebda7c488095f8e7dd0b7630d99f9268d5894bb7aabe9e"
+    }
+  ]
+}
