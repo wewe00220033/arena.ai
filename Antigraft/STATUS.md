@@ -1,19 +1,26 @@
 # حالة Antigraft
 
 - author: Antigraft
-- commit الأساس: `Baseline v1.0` (تحصين فحص البنك وويدجت الجزمة)
-- الحالة: STOP_GATE_PENDING_FRESH_CODE — بوابة توقف إلزامية: حظر إنشاء حساب جديد لحين قيام الوكيل المنفذ ببرمجة مسارات الصناديق للطابقين 1 و 2.
-- المهمة الحالية والملفات المحجوزة: الوكيل المنفذ مكلف ببرمجة مسارات الصناديق في الفرع feature/smart-resume-fresh-account.
+- commit الأساس: `4c4692a` (على فرع `feature/smart-resume-fresh-account`)
+- الحالة: ALL_FLOORS_ACCEPTED_FOR_SIMULATION — تم تدقيق مسار مكافأة الطابق الثاني (Grain of Plenty: 19000) وسلم النزول (19004) واعتمادهما للمحاكاة، واجتياز فحص تكامل الرحلة كوحدة واحدة عبر 44/44 اختباراً ناجحاً. البوابة 1 والبوابة 2 مكتملتان ومصادق عليهما رقابياً، والنظام بانتظار إشارة انطلاق البوابة 3 (التجربة الحية المراقبة).
+- المهمة الحالية والملفات المحجوزة: اكتمال التدقيق الرقابي للبوابتين 1 و 2؛ لا توجد ملفات محجوزة.
 - حدود الاعتماد والتغطية:
-  - ✅ **معتمد ومحصن:** استئناف وإتمام الطابقين 3 و 4، حصد الجزمة، الإيداع في البنك، والتحقق المشدد من محتويات البنك ورصيد الذهب، وحارس السطح المبكر.
-  - 🛑 **حظر البدء بالحساب الجديد (Stop Gate):** تم تنبيه زيزو بعدم إنشاء حساب جديد حالياً حتى لا يضيع وقته، لعدم وجود كود مسارات صناديق الطابقين 1 و 2 في السكريبت التنفيذي بعد.
+  - ✅ **معتمد ومحصن:** قراءة الحالة الحية `read_progress()`، دالة القرار المجردة `choose_next_action()`، مسارات مكافآت الطوابق الأربعة كاملة (1، 2، 3، 4) وفق التسلسل الخطي الحتمي مع التحقق بعد كل باب، النزول المباشر للسلالم من الغرف المركزية، الاستئناف الذكي من كافة الطوابق والمحطات، خروج السطح والإيداع المشدد في البنك، وحزمة الـ 44 اختباراً.
+  - ⚠️ **حدود الاستخدام (Important Limitation):** المحاكاة وتكامل الرحلة ناجحان 100%، وتنتظر المنظومة إجراء التجربة الحية المراقبة على حساب جديد (Gate 3) بالتنسيق المشترك مع Arena AI.
 - التقارير المعتمدة:
-  1. [2026-10-21-task-01.md](reports/2026-10-21-task-01.md) — تثبيت النسخة المحافظة واستبعاد Please wait.
-  2. [2026-10-21-task-02-breakthrough-boots-claimed.md](reports/2026-10-21-task-02-breakthrough-boots-claimed.md) — كشف ويدجت الجزمة (groupId 270, childId 15) وحصدها رسمياً.
-  3. [2026-10-21-task-03-bank-verified-and-code-hardened.md](reports/2026-10-21-task-03-bank-verified-and-code-hardened.md) — الدمج الانتقائي المحصن وتأكيد وجود Fancy boots id 9005 واجتياز 17 اختباراً.
-  4. [2026-10-21-task-04-reviewer-audit-selective-merge.md](reports/2026-10-21-task-04-reviewer-audit-selective-merge.md) — التقرير المستقل لتدقيق الدمج الانتقائي ومطابقة ملاحظات Arena AI.
-  5. [2026-10-21-task-05-baseline-adoption-and-fresh-account-roadmap.md](reports/2026-10-21-task-05-baseline-adoption-and-fresh-account-roadmap.md) — تحصين فحص البنك وويدجت الجزمة، اعتماد Baseline v1.0 وتوثيق خارطة طريق الحسابات الجديدة.
-  6. [2026-10-21-task-06-reviewer-audit-baseline-and-fresh-account-readiness.md](reports/2026-10-21-task-06-reviewer-audit-baseline-and-fresh-account-readiness.md) — التدقيق المستقل لخط الأساس ومصادقة خارطة طريق الحسابات الجديدة.
-  7. [2026-10-21-task-07-reviewer-stop-gate-fresh-account-readiness.md](reports/2026-10-21-task-07-reviewer-stop-gate-fresh-account-readiness.md) — بوابة التوقف الإلزامية: منع إنشاء حساب جديد لحين برمجة مسارات الطابقين 1 و 2.
-- الاختبار الحي: PASS_LIVE (تأكيد وجود Fancy boots id 9005 بكمية 1 في البنك، ورصد الذهب المسجل 28 GP، والـ Varbits الأربعة = 1).
-- اختبار المحاكاة: PASS_SIMULATION (17/17 اختباراً في `test_safety.py`).
+  1. [2026-10-21-task-01.md](reports/2026-10-21-task-01.md)
+  2. [2026-10-21-task-02-breakthrough-boots-claimed.md](reports/2026-10-21-task-02-breakthrough-boots-claimed.md)
+  3. [2026-10-21-task-03-bank-verified-and-code-hardened.md](reports/2026-10-21-task-03-bank-verified-and-code-hardened.md)
+  4. [2026-10-21-task-04-reviewer-audit-selective-merge.md](reports/2026-10-21-task-04-reviewer-audit-selective-merge.md)
+  5. [2026-10-21-task-05-baseline-adoption-and-fresh-account-roadmap.md](reports/2026-10-21-task-05-baseline-adoption-and-fresh-account-roadmap.md)
+  6. [2026-10-21-task-06-reviewer-audit-baseline-and-fresh-account-readiness.md](reports/2026-10-21-task-06-reviewer-audit-baseline-and-fresh-account-readiness.md)
+  7. [2026-10-21-task-07-implementation-of-smart-resume-and-state-machine.md](reports/2026-10-21-task-07-implementation-of-smart-resume-and-state-machine.md)
+  8. [2026-10-21-task-08-reviewer-contract-audit-and-stop-not-implemented.md](reports/2026-10-21-task-08-reviewer-contract-audit-and-stop-not-implemented.md)
+  9. [2026-10-21-task-09-implementer-floor-1-reward-path-and-tests.md](reports/2026-10-21-task-09-implementer-floor-1-reward-path-and-tests.md)
+  10. [2026-10-21-task-10-reviewer-audit-floor-1-stale-coordinate-defect.md](reports/2026-10-21-task-10-reviewer-audit-floor-1-stale-coordinate-defect.md)
+  11. [2026-10-21-task-11-implementer-fix-floor-1-stale-coords-and-sequential-stages.md](reports/2026-10-21-task-11-implementer-fix-floor-1-stale-coords-and-sequential-stages.md)
+  12. [2026-10-21-task-12-reviewer-audit-floor-1-fix-accepted-for-simulation.md](reports/2026-10-21-task-12-reviewer-audit-floor-1-fix-accepted-for-simulation.md)
+  13. [2026-10-21-task-13-implementer-floor-2-reward-path-and-tests.md](reports/2026-10-21-task-13-implementer-floor-2-reward-path-and-tests.md)
+  14. [2026-10-21-task-14-reviewer-audit-floor-2-and-journey-integration-accepted.md](reports/2026-10-21-task-14-reviewer-audit-floor-2-and-journey-integration-accepted.md)
+- اختبار المحاكاة: PASS_SIMULATION (44/44 اختباراً في `test_safety.py`).
+- الاختبار الحي: PASS_LIVE (محتويات البنك والـ Varbits الأربعة = 1 على الحساب التجريبي السابق).

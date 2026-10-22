@@ -19,6 +19,7 @@ TOKEN_PATH = os.environ.get("OSRS_AGENT_TOKEN_PATH", os.path.expanduser("~/.rune
 TOKEN = ""
 HEADERS = {"X-Agent-Token": TOKEN, "Content-Type": "application/json"}
 BASE_URL = "http://127.0.0.1:8081"
+
 def api_get(endpoint):
     req = urllib.request.Request(f"{BASE_URL}{endpoint}", headers=HEADERS)
     try:
@@ -44,18 +45,27 @@ def ensure_login():
         print("✅ نتيجة تسجيل الدخول:", res.get("message"))
         time.sleep(2)
 
-# استيراد المساعد المعزول لحل الأسئلة (Cache-First + Groq Fallback)
+# استيراد المساعد المعزول لحل الأسئلة الأمنية
 try:
     from osrs_ai_solver import solve_security_dialogue, select_best_answer
 except ImportError:
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     from osrs_ai_solver import solve_security_dialogue, select_best_answer
 
+# استيراد حارس الأمان ووحدة التحكم المركزية
+try:
+    from safety import SafetyStop, SafetyController
+except ImportError:
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from safety import SafetyStop, SafetyController
+
+controller = SafetyController(api_get, api_post)
+
 STRONGHOLD_DOORS = [23653, 23654, 23727, 23728, 17009, 17100, 19206, 19207]
 STRONGHOLD_DOOR_NAMES = ["Oozing barrier", "Portal of Death", "Gate of War", "Rickety door"]
 
 def is_all_rewards_claimed():
-    """التحقق من استلام كافة مكافآت الطوابق الأربعة (Varbits 2309..2312)"""
+    """التحقق الصريح من استلام كافة مكافآت الطوابق الأربعة (Varbits 2309..2312)"""
     vbs = [api_get(f"/varbits?id={vid}").get("value", 0) for vid in (2309, 2310, 2311, 2312)]
     return all(v == 1 for v in vbs)
 
@@ -76,15 +86,13 @@ def verify_bank_has_boots(bank_data):
             return True
     return False
 
-
 def handle_dialogue_and_modals():
+    """التعامل مع شاشات الحوار والأسئلة مع فحص الأمان الدوري"""
+    controller.check()
     # 1. شباك التحذير للسلالم (groupId: 579, childId: 17)
     api_post("/widgets/click", {"groupId": 579, "childId": 17})
 
-
-    # 2. الحوارات والأسئلة (تكامل ذكي مع مساعد الأمان المعزول)
     handled = False
-
     for _ in range(5):
         d = api_get("/dialogue")
         if not d.get("inDialogue"):
@@ -95,15 +103,13 @@ def handle_dialogue_and_modals():
             raw_opts = d.get("options", [])
             q = d.get("question", "") or d.get("dialogueText", "")
 
-            # استبعاد رسائل الانتظار أو النوافذ المؤقتة قبل اتخاذ القرار
+            # استبعاد رسائل الانتظار قبل اتخاذ القرار
             opts = [o for o in raw_opts if isinstance(o, str) and o.strip().lower().rstrip(".!?") not in ("please wait", "click here to continue")]
             if not opts:
                 time.sleep(0.5)
                 continue
 
-            # استدعاء المساعد المعزول (كاش محلي فقط بدون أي خدمات خارجية)
             selected = solve_security_dialogue(q, opts)
-
             if selected:
                 print(f"💬 اختيار الإجابة: {selected}")
                 api_post("/dialogue/select", {"option": selected})
@@ -118,185 +124,303 @@ def handle_dialogue_and_modals():
     return handled
 
 def check_and_eat_food():
-    """فحص الدم والأكل التلقائي لو الـ HP نزل عن 8"""
-    try:
-        req = urllib.request.Request(f"{BASE_URL}/skills", headers=HEADERS)
-        with urllib.request.urlopen(req, timeout=2) as resp:
-            data = json.loads(resp.read().decode())
-            hp_cur = 10
-            for s in data.get("skills", []):
-                if s.get("name") == "Hitpoints":
-                    hp_cur = s.get("boostedLevel", s.get("level", 10))
-            if hp_cur <= 7:
-                req_inv = urllib.request.Request(f"{BASE_URL}/inventory", headers=HEADERS)
-                with urllib.request.urlopen(req_inv, timeout=2) as r_inv:
-                    inv_data = json.loads(r_inv.read().decode())
-                    for item in inv_data.get("items", []):
-                        name_i = item.get("name", "").lower()
-                        if any(f in name_i for f in ["shrimp", "trout", "salmon", "meat", "bread", "cake", "tuna", "lobster", "pie", "fish"]):
-                            print(f"🍖 استهلاك طعام لرفع الدم ({hp_cur}/10): {item.get('name')}")
-                            api_post("/inventory/interact", {"id": item.get("id"), "action": "Eat"})
-                            time.sleep(0.6)
-                            break
-    except Exception:
-        pass
+    """فحص الدم والأكل التلقائي لو الـ HP نزل عن 8 عبر controller.check()"""
+    controller.check()
 
 def try_pass_door(door_name="Oozing barrier"):
-    """تفاعل صريح مع الباب والانتظار حتى عبوره دون مقاطعة المشي"""
-    for act in ["Pass-through", "Open"]:
-        r = api_post("/objects/interact", {"name": door_name, "action": act})
-        if r.get("success") is True:
-            print(f"🚪 تم فتح وتجاوز الباب ({door_name}) بنجاح!")
-            for _ in range(3):
-                time.sleep(1)
+    """تفاعل صريح مع الباب والتحقق من تغير الموضع لتأكيد العبور دون قفزات عشوائية"""
+    before = controller.check()
+    for action in ("Pass-through", "Open"):
+        result = api_post("/objects/interact", {"name": door_name, "action": action})
+        if result.get("success") is True:
+            for _ in range(8):
+                time.sleep(0.5)
                 handle_dialogue_and_modals()
-            return True
-    return False
+                after = controller.check()
+                if after != before:
+                    print(f"🚪 تم عبور الباب بنجاح ({door_name})!")
+                    return True
+            raise SafetyStop(f"لم تُرصد حركة بعد التفاعل مع الباب ({door_name})")
+    raise SafetyStop(f"فشل التفاعل مع الباب ({door_name})")
 
 def try_open_nearby_doors():
-    # فحص الأبواب بالاسم أولاً مع التحقق الصارم من success
-    for name in STRONGHOLD_DOOR_NAMES:
-        for act in ["Pass-through", "Open"]:
-            r = api_post("/objects/interact", {"name": name, "action": act})
-            if r.get("success") is True:
-                print(f"🚪 تم التفاعل مع الباب ({name}) بنجاح!")
-                for _ in range(3):
-                    time.sleep(1)
-                    handle_dialogue_and_modals()
-                return True
-    # فحص الأبواب بالـ ID
-    for d_id in STRONGHOLD_DOORS:
-        for act in ["Pass-through", "Open"]:
-            r = api_post("/objects/interact", {"id": d_id, "action": act})
-            if r.get("success") is True:
-                print(f"🚪 تم التفاعل مع الباب (ID {d_id}) بنجاح!")
-                for _ in range(3):
-                    time.sleep(1)
-                    handle_dialogue_and_modals()
-                return True
-    return False
+    # الحظر الصارم لفتح أبواب عشوائية قد تُعيد اللاعب للخلف
+    raise SafetyStop("المسار متوقف؛ يلزم فحص الباب والمسار يدوياً، لن نختار باباً عشوائياً")
 
 def walk_to(x, y, plane=0, timeout=75):
-    print(f"🚶 يتحرك الآن إلى: ({x}, {y}, plane: {plane})...")
-    api_post("/walk", {"x": x, "y": y, "plane": plane, "wait": False})
-    start_t = time.time()
-    last_move_t = time.time()
-    last_px, last_py = 0, 0
-
-    while time.time() - start_t < timeout:
-        check_and_eat_food()
-
-        # لو في حوار نجاوبه فوراً
-        if handle_dialogue_and_modals():
-            last_move_t = time.time()
-            time.sleep(1)
-            api_post("/walk", {"x": x, "y": y, "plane": plane, "wait": False})
-            continue
-
-        st = api_get("/state")
-        pos = st.get("player", {}).get("position", {})
-        px, py, p_plane = pos.get("x", 0), pos.get("y", 0), pos.get("plane", 0)
-
-        # التأكد من الوصول للهدف
-        if abs(px - x) <= 3 and abs(py - y) <= 3 and p_plane == plane:
-            print(f"📍 وصل بنجاح إلى الهدف: ({px}, {py})")
+    """المشي الآمن مع المراقبة الدورية لحالة الأمان والحوارات"""
+    controller.check()
+    controller.require(api_post("/walk", {"x": x, "y": y, "plane": plane, "wait": False}), "المشي")
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        pos = controller.check()
+        if pos[2] == plane and max(abs(pos[0] - x), abs(pos[1] - y)) <= 1:
+            print(f"📍 وصل إلى جوار الهدف: {pos}")
             return True
-
-        # رصد الحركة لتجاوز عوائق الأبواب
-        if px != last_px or py != last_py:
-            last_move_t = time.time()
-            last_px, last_py = px, py
-        else:
-            # لو متوقف لأكثر من 3 ثواني وبدون حوار نشط (قدام باب مسدود)
-            if time.time() - last_move_t >= 3:
-                d_chk = api_get("/dialogue")
-                if not d_chk.get("inDialogue"):
-                    print("⚠️ توقف مؤقت - محاولة فتح باب الأمان...")
-                    if try_open_nearby_doors():
-                        # منع الـ Race Condition: عدم إرسال /walk فوراً لترك اللاعب يعبر الباب
-                        last_move_t = time.time()
-                        continue
-                api_post("/walk", {"x": x, "y": y, "plane": plane, "wait": False})
-                last_move_t = time.time()
-
-        time.sleep(1)
-    print(f"⚠️ انتهت المهلة ({timeout}ث)، الموقع الحالي: ({px}, {py}, plane: {p_plane})")
-    return False
+        handle_dialogue_and_modals()
+        time.sleep(0.5)
+    raise SafetyStop(f"انتهت مهلة المشي إلى {(x, y, plane)}؛ لن تُنفذ الخطوة التالية")
 
 def interact_object(obj_id, action):
-    print(f"🖐️ تفاعل مع الغرض: {obj_id} (أمر: {action})...")
-    res = api_post("/objects/interact", {"id": obj_id, "action": action})
-    time.sleep(2)
+    """التفاعل الصريح مع كائن محدد والتحقق من نجاحه"""
+    controller.check()
+    if obj_id == 23732 and action == "Climb-up":
+        controller.allow_surface_exit = True
+    result = api_post("/objects/interact", {"id": obj_id, "action": action})
+    controller.require(result, f"التفاعل مع الكائن {obj_id}")
+    time.sleep(0.6)
     handle_dialogue_and_modals()
-    return res
+    return result
 
-def main():
-    print("=" * 65)
-    print("🚀 مرحباً بك في البوت المستقل الشامل لـ Stronghold of Security")
-    print("💰 الهدف: جمع 10,000 GP + Fancy Boots وحفظها في البنك")
-    print("⚡ يعمل محلياً 100% من جهازك بدون نت ولا ذكاء اصطناعي وبدون استهلاك كوتا!")
-    print("=" * 65)
+# ==============================================================================
+# منطق قراءة الحالة والقرار الذكي (Smart State Machine & Resume Logic)
+# ==============================================================================
 
-    ensure_login()
-
+def read_progress():
+    """قراءة وتحقق صارم من حالة اللعبة والموقع والمكافآت والشنطة والدم دون افتراضات مسبقة"""
     st = api_get("/state")
-    if "error" in st:
-        print("\n❌ تنبيه هام:")
-        print("مش قادرين نتصل بـ Microbot على المنفذ 8081!")
-        print("تعذر الاتصال بالخادم المحلي؛ قد يكون متوقفاً أو المنفذ أو التوكن غير صحيح.")
-        print("الحل في ثانية: اقفل اللعبة المفتوحة حالياً، وافتحها من أيقونة 'تشغيل_البوت.bat' اللي على سطح المكتب.")
-        print("أول ما تفتح اللعبة وتسجل دخول، شغل ملف 'تشغيل_بوت_السترونج_هولد.bat' وهيشتغل فوراً!")
-        input("\nاضغط Enter للخروج...")
-        sys.exit(1)
+    if not isinstance(st, dict) or "error" in st:
+        return {"status": "UNKNOWN", "reason": "فشل قراءة /state من خادم اللعبة"}
+    
+    player = st.get("player")
+    if not isinstance(player, dict):
+        return {"status": "UNKNOWN", "reason": "بيانات اللاعب غير متوفرة في /state"}
 
-    pos = st.get("player", {}).get("position", {})
-    px, py = pos.get('x', 0), pos.get('y', 0)
-    print(f"📌 موقع اللاعب الحالي: ({px}, {py}, plane: {pos.get('plane')})")
+    pos = player.get("position")
+    if not isinstance(pos, dict):
+        return {"status": "UNKNOWN", "reason": "بيانات موضع اللاعب غير متوفرة"}
 
-    # لو البنك مفتوح اقفله
-    api_post("/bank/close", {})
+    px = pos.get("x")
+    py = pos.get("y")
+    plane = pos.get("plane", 0)
 
-    # التحقق المسبق: إذا كان الحساب قد أتم الحصن بالكامل وموجود على السطح
-    if is_all_rewards_claimed() and py < 5000:
-        print("\n" + "=" * 65)
-        print("🎉 مهمة Stronghold of Security مكتملة رسمياً 100% على هذا الحساب!")
-        print("✅ كافة الطوابق الـ 4 مكتملة (Varbits 2309..2312 = 1).")
-        print(f"📍 موقع اللاعب الحالي على السطح: ({px}, {py})؛ لا داعي لدخول الكهف مجدداً.")
-        print("=" * 65)
-        return True
+    if not isinstance(px, int) or not isinstance(py, int):
+        return {"status": "UNKNOWN", "reason": "إحداثيات اللاعب غير صالحة"}
 
-
-    # إذا كان اللاعب على السطح (سواء في لومبريدج أو البورصة أو الطريق)
-
+    # تصنيف المنطقة جغرافياً بدقة بحدود x و y معاً
     if py < 5000:
-        print("\n--- [المرحلة 1]: التوجه لمدخل الـ Stronghold في قرية البرابرة ---")
+        region = "SURFACE"
+    elif 1855 <= px <= 1935 and 5180 <= py <= 5250:
+        region = "FLOOR_1"
+    elif 1980 <= px <= 2060 and 5180 <= py <= 5250:
+        region = "FLOOR_2"
+    elif 2110 <= px <= 2185 and 5240 <= py <= 5315:
+        region = "FLOOR_3"
+    elif 2300 <= px <= 2380 and 5180 <= py <= 5260:
+        region = "FLOOR_4"
+    else:
+        region = "UNKNOWN_REGION"
+
+    # قراءة الـ Varbits الأربعة مع التحقق من صحتها
+    varbits = {}
+    for vid in (2309, 2310, 2311, 2312):
+        res = api_get(f"/varbits?id={vid}")
+        if not isinstance(res, dict) or "value" not in res:
+            return {"status": "UNKNOWN", "reason": f"فشل قراءة Varbit {vid}"}
+        val = res.get("value")
+        if val not in (0, 1):
+            return {"status": "UNKNOWN", "reason": f"قيمة Varbit {vid} غير صالحة: {val}"}
+        varbits[vid] = val
+
+    # قراءة الحقيبة
+    inv_data = api_get("/inventory")
+    items = inv_data.get("items", []) if isinstance(inv_data, dict) and isinstance(inv_data.get("items"), list) else []
+    has_boots_inv = any(
+        (it.get("id") == 9005 or str(it.get("name", "")).strip().lower() == "fancy boots")
+        and isinstance(it.get("quantity", 0), int) and it.get("quantity", 0) > 0
+        for it in items if isinstance(it, dict)
+    )
+
+    # قراءة مستوى الدم
+    skills_data = api_get("/skills")
+    hp = None
+    if isinstance(skills_data, dict) and isinstance(skills_data.get("skills"), list):
+        for s in skills_data.get("skills", []):
+            if isinstance(s, dict) and s.get("name") == "Hitpoints":
+                hp = s.get("boostedLevel", s.get("level"))
+                break
+
+    return {
+        "status": "VALID",
+        "logged_in": st.get("loggedIn", True),
+        "position": {"x": px, "y": py, "plane": plane},
+        "region": region,
+        "varbits": varbits,
+        "all_claimed": all(varbits[k] == 1 for k in (2309, 2310, 2311, 2312)),
+        "inventory": items,
+        "has_boots_in_inventory": has_boots_inv,
+        "hp": hp
+    }
+
+def choose_next_action(progress):
+    """
+    دالة قرار مجردة وخالية تماماً من استدعاءات API أو حركة.
+    تحدد الخطوة التالية بدقة وفقاً لجدول القرار الصغير في عقد التنفيذ (IMPLEMENTATION_CONTRACT).
+    """
+    if not isinstance(progress, dict) or progress.get("status") != "VALID":
+        reason = progress.get("reason", "قراءة ناقصة أو غير صالحة") if isinstance(progress, dict) else "بيانات غير صالحة"
+        return {"action": "STOP", "reason": f"قراءة ناقصة أو موقع غير معروف: {reason}"}
+
+    region = progress.get("region")
+    if region == "UNKNOWN_REGION":
+        pos = progress.get("position", {})
+        return {"action": "STOP", "reason": f"اللاعب في موقع غير معروف داخل الحصن: ({pos.get('x')}, {pos.get('y')})"}
+
+    varbits = progress.get("varbits", {})
+    all_claimed = progress.get("all_claimed", False)
+
+    # 1. على السطح
+    if region == "SURFACE":
+        if all_claimed:
+            if progress.get("has_boots_in_inventory"):
+                return {"action": "GO_TO_BANK", "reason": "كافة المكافآت مكتملة والجزمة في الحقيبة؛ التوجه للبنك للإيداع"}
+            return {"action": "STOP_COMPLETED", "reason": "كافة مكافآت الحصن مكتملة واللاعب على السطح؛ لا داعي لدخول الكهف"}
+        else:
+            return {"action": "ENTER_STRONGHOLD", "reason": "اللاعب على السطح وتوجد مكافآت غير مستلمة؛ التوجه للمدخل والنزول"}
+
+    # 2. الطابق الأول (Vault of War)
+    if region == "FLOOR_1":
+        if varbits.get(2309) == 0:
+            return {"action": "CLAIM_FLOOR_1_REWARD", "reason": "مكافأة الطابق الأول ناقصة؛ التوجه لصندوق Gift of Peace"}
+        else:
+            return {"action": "FLOOR_1_TO_FLOOR_2", "reason": "مكافأة الطابق الأول مستلمة؛ التوجه لسلم النزول للطابق الثاني"}
+
+    # 3. الطابق الثاني (Catacomb of Famine)
+    if region == "FLOOR_2":
+        if varbits.get(2309) == 0:
+            return {"action": "STOP", "reason": "داخل الطابق الثاني مع نقص مكافأة الطابق الأول؛ تراجع يدوي مطلوب"}
+        if varbits.get(2310) == 0:
+            return {"action": "CLAIM_FLOOR_2_REWARD", "reason": "مكافأة الطابق الثاني ناقصة؛ التوجه لصندوق Grain of Plenty"}
+        else:
+            return {"action": "FLOOR_2_TO_FLOOR_3", "reason": "مكافأة الطابق الثاني مستلمة؛ التوجه لسلم النزول للطابق الثالث"}
+
+    # 4. الطابق الثالث (Pit of Pestilence)
+    if region == "FLOOR_3":
+        if varbits.get(2309) == 0 or varbits.get(2310) == 0:
+            return {"action": "STOP", "reason": "داخل الطابق الثالث مع نقص مكافأة سابقة؛ تراجع يدوي مطلوب"}
+        if varbits.get(2311) == 0:
+            return {"action": "CLAIM_FLOOR_3_REWARD", "reason": "مكافأة الطابق الثالث ناقصة؛ التوجه لصندوق الـ 5,000 GP"}
+        else:
+            return {"action": "FLOOR_3_TO_FLOOR_4", "reason": "مكافأة الطابق الثالث مستلمة؛ التوجه لسلم النزول للطابق الرابع"}
+
+    # 5. الطابق الرابع (Sepulchre of Death)
+    if region == "FLOOR_4":
+        if any(varbits.get(k) == 0 for k in (2309, 2310, 2311)):
+            return {"action": "STOP", "reason": "داخل الطابق الرابع مع نقص مكافأة سابقة؛ تراجع يدوي مطلوب"}
+        if varbits.get(2312) == 0:
+            return {"action": "CLAIM_FLOOR_4_REWARD", "reason": "مكافأة Fancy boots ناقصة؛ التوجه للمهد لاختيار وحصد الجزمة"}
+        else:
+            return {"action": "EXIT_FLOOR_4_TO_SURFACE", "reason": "كافة مكافآت الحصن مستلمة والجزمة محصودة؛ الخروج عبر البوابة إلى السطح"}
+
+    return {"action": "STOP", "reason": "حالة غير متوقعة"}
+
+def execute_step(action):
+    """تنفيذ إجراء واحد محدد ثم العودة لإعادة قراءة الحالة الحية"""
+    if action == "ENTER_STRONGHOLD":
+        print("\n--- التوجه لمدخل الـ Stronghold في قرية البرابرة ---")
         if not walk_to(3080, 3419, plane=0, timeout=160):
             walk_to(3080, 3419, plane=0, timeout=80)
-
-        print("\n--- [المرحلة 2]: النزول داخل الكهف (الطابق الأول) ---")
+        print("🖐️ النزول عبر فتحة الصخور (20790)...")
         for attempt in range(5):
             interact_object(20790, "Climb-down")
             for _ in range(8):
                 time.sleep(1)
                 handle_dialogue_and_modals()
-                st_chk = api_get("/state")
-                if st_chk.get("player", {}).get("position", {}).get("y", 0) >= 5000:
-                    print("📍 تم النزول تحت الأرض بنجاح داخل الكهف!")
-                    break
-            st_chk = api_get("/state")
-            if st_chk.get("player", {}).get("position", {}).get("y", 0) >= 5000:
-                break
-            print(f"🔄 إعادة محاولة النزول داخل الصخرة (محاولة {attempt + 2}/5)...")
+                st = api_get("/state")
+                if st.get("player", {}).get("position", {}).get("y", 0) >= 5000:
+                    print("📍 تم النزول داخل الكهف بنجاح!")
+                    return True
+        return False
 
-    # 1. عبور الطابق الأول (Vault of War)
-    st_cur = api_get("/state")
-    pos_cur = st_cur.get("player", {}).get("position", {})
-    px, py = pos_cur.get('x', 0), pos_cur.get('y', 0)
-    if 1855 <= px <= 1930 and py >= 5000:
-        print("\n--- [المرحلة 3]: عبور الطابق الأول إلى سلم النزول للطابق الثاني ---")
-        interact_object(20786, "Use")
-        time.sleep(2)
-        handle_dialogue_and_modals()
+    elif action == "CLAIM_FLOOR_1_REWARD":
+        print("\n--- عبور الطابق الأول (Vault of War) وحصد مكافأة 2,000 GP وحركة Flap ---")
+        st = api_get("/state")
+        pos = st.get("player", {}).get("position", {}) if isinstance(st, dict) else {}
+        px = pos.get("x", 0)
+        py = pos.get("y", 0)
+
+        # 1. تحديد مقطع البداية بدقة من منطقة وجود اللاعب الحالية
+        if 1855 <= px <= 1867 and py >= 5232:
+            start_stage = 0  # غرفة البداية
+        elif 1855 <= px <= 1872 and 5220 <= py <= 5231:
+            start_stage = 1  # الغرفة الجنوبية الغربية
+        elif 1873 <= px <= 1890 and py >= 5235:
+            start_stage = 2  # الممر الشمالي
+        elif 1891 <= px <= 1925 and py >= 5233:
+            start_stage = 3  # الغرفة الشمالية الشرقية ومدخل الغرفة المركزية
+        elif 1895 <= px <= 1920 and 5215 <= py <= 5232:
+            start_stage = 4  # الغرفة المركزية (غرفة الصندوق)
+        else:
+            raise SafetyStop(f"موقع اللاعب في الطابق الأول خارج النطاق الموثق للمحطات: {(px, py)}")
+
+        # 2. تنفيذ المقاطع التالية بالترتيب الخطي مع التحقق من الوصول لنهاية كل مقطع
+        if start_stage <= 0:
+            print("📍 [المقطع 1/4] التحرك نحو مخرج غرفة البداية وعبور الباب...")
+            walk_to(1859, 5232, plane=0, timeout=25)
+            try_pass_door("Gate of War")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("y", 9999) > 5231:
+                raise SafetyStop(f"فشل إثبات عبور باب غرفة البداية، ما زال اللاعب عند: {after_pos}")
+
+        if start_stage <= 1:
+            print("📍 [المقطع 2/4] عبور الغرفة الجنوبية الغربية نحو مخرجها...")
+            walk_to(1864, 5227, plane=0, timeout=15)
+            walk_to(1870, 5227, plane=0, timeout=15)
+            try_pass_door("Gate of War")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("y", 0) < 5235:
+                raise SafetyStop(f"فشل إثبات عبور باب الغرفة الجنوبية الغربية، اللاعب عند: {after_pos}")
+
+        if start_stage <= 2:
+            print("📍 [المقطع 3/4] عبور الممر الشمالي نحو بوابته الشرقية...")
+            walk_to(1875, 5239, plane=0, timeout=20)
+            walk_to(1880, 5240, plane=0, timeout=15)
+            walk_to(1883, 5243, plane=0, timeout=15)
+            try_pass_door("Gate of War")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("x", 0) < 1891:
+                raise SafetyStop(f"فشل إثبات عبور باب الممر الشمالي، اللاعب عند: {after_pos}")
+
+        if start_stage <= 3:
+            print("📍 [المقطع 4/4] عبور الغرفة الشمالية الشرقية نحو باب الغرفة المركزية...")
+            walk_to(1912, 5242, plane=0, timeout=20)
+            walk_to(1912, 5237, plane=0, timeout=15)
+            walk_to(1905, 5234, plane=0, timeout=15)
+            try_pass_door("Gate of War")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("y", 9999) > 5232 or after_pos.get("x", 0) < 1895:
+                raise SafetyStop(f"فشل إثبات دخول الغرفة المركزية، اللاعب عند: {after_pos}")
+
+        # 3. الوصول لموقع الصندوق في قلب الغرفة المركزية (Gift of Peace: 20656)
+        print("📍 الوصول لصندوق Gift of Peace في الغرفة المركزية...")
+        walk_to(1906, 5222, plane=0, timeout=20)
+
+        # 4. فتح الصندوق واستلام المكافأة مع حل الأسئلة الأمنية
+        print("🖐️ التفاعل مع صندوق Gift of Peace (20656)...")
+        for attempt in range(5):
+            interact_object(20656, "Open")
+            for _ in range(6):
+                time.sleep(1)
+                handle_dialogue_and_modals()
+            if api_get("/varbits?id=2309").get("value", 0) == 1:
+                print("💰 مبروووك! تم استلام مكافأة الطابق الأول (2,000 GP + Flap emote) بنجاح!")
+                return True
+        raise SafetyStop("فشل حصد مكافأة الطابق الأول بعد التفاعل مع الصندوق (Gift of Peace: 20656)")
+
+    elif action == "FLOOR_1_TO_FLOOR_2":
+        print("\n--- عبور الطابق الأول إلى سلم النزول للطابق الثاني ---")
+        st = api_get("/state")
+        pos = st.get("player", {}).get("position", {}) if isinstance(st, dict) else {}
+        px = pos.get("x", 0)
+        # إذا كان اللاعب في غرفة البداية (بعيد عن الغرفة المركزية)، يستخدم بوابة الاختصار
+        if px < 1880:
+            interact_object(20786, "Use")
+            time.sleep(2)
+            handle_dialogue_and_modals()
         walk_to(1903, 5222, plane=0, timeout=35)
         print("🖐️ النزول عبر سلم الطابق الأول (20785)...")
         for attempt in range(4):
@@ -304,24 +428,106 @@ def main():
             for _ in range(6):
                 time.sleep(1)
                 handle_dialogue_and_modals()
-                st_chk = api_get("/state")
-                px_chk = st_chk.get("player", {}).get("position", {}).get("x", 0)
-                if 1980 <= px_chk <= 2055:
+                st = api_get("/state")
+                if 1980 <= st.get("player", {}).get("position", {}).get("x", 0) <= 2060:
                     print("📍 تم النزول للطابق الثاني بنجاح!")
-                    break
-            st_chk = api_get("/state")
-            if 1980 <= st_chk.get("player", {}).get("position", {}).get("x", 0) <= 2055:
-                break
+                    return True
+        return False
 
-    # 2. عبور الطابق الثاني (Catacomb of Famine)
-    st_cur = api_get("/state")
-    pos_cur = st_cur.get("player", {}).get("position", {})
-    px, py = pos_cur.get('x', 0), pos_cur.get('y', 0)
-    if 1980 <= px <= 2055 and py >= 5000:
-        print("\n--- [المرحلة 4]: عبور الطابق الثاني إلى سلم النزول للطابق الثالث ---")
-        interact_object(19005, "Use")
-        time.sleep(2)
-        handle_dialogue_and_modals()
+    elif action == "CLAIM_FLOOR_2_REWARD":
+        print("\n--- عبور الطابق الثاني (Catacomb of Famine) وحصد مكافأة 3,000 GP وحركة Slap head ---")
+        st = api_get("/state")
+        pos = st.get("player", {}).get("position", {}) if isinstance(st, dict) else {}
+        px, py = pos.get("x", 0), pos.get("y", 0)
+
+        # 1. تحديد المرحلة الابتدائية بناءً على موقع اللاعب الفعلي في الغرف الموثقة
+        if 2035 <= px <= 2050 and 5238 <= py <= 5250:
+            start_stage = 0  # غرفة البداية (سلم النزول وبوابة الاختصار 19005)
+        elif 2027 <= px <= 2036 and 5230 <= py <= 5240:
+            start_stage = 1  # الممر الشرقي
+        elif 2016 <= px <= 2026 and 5237 <= py <= 5250:
+            start_stage = 2  # الغرفة الشمالية
+        elif 2000 <= px <= 2016 and 5225 <= py <= 5250:
+            start_stage = 3  # الممر الغربي ومدخل الغرفة المركزية
+        elif 2017 <= px <= 2035 and 5210 <= py <= 5230:
+            start_stage = 4  # الغرفة المركزية (غرفة كيس الحبوب Grain of Plenty)
+        else:
+            raise SafetyStop(f"موقع اللاعب في الطابق الثاني خارج النطاق الموثق للمحطات: {(px, py)}")
+
+        # 2. تنفيذ المقاطع التالية بالترتيب الخطي مع التحقق من الوصول لنهاية كل مقطع
+        if start_stage <= 0:
+            print("📍 [المقطع 1/4] التحرك نحو مخرج غرفة البداية وعبور الباب...")
+            walk_to(2034, 5244, plane=0, timeout=25)
+            try_pass_door("Rickety door")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("x", 9999) > 2034:
+                raise SafetyStop(f"فشل إثبات عبور باب غرفة البداية بالطابق الثاني، ما زال اللاعب عند: {after_pos}")
+
+        if start_stage <= 1:
+            print("📍 [المقطع 2/4] عبور الممر الشرقي نحو مخرجه الشمالي...")
+            walk_to(2030, 5236, plane=0, timeout=15)
+            walk_to(2027, 5236, plane=0, timeout=15)
+            try_pass_door("Rickety door")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("y", 0) < 5241:
+                raise SafetyStop(f"فشل إثبات عبور باب الممر الشرقي بالطابق الثاني، اللاعب عند: {after_pos}")
+
+        if start_stage <= 2:
+            print("📍 [المقطع 3/4] عبور الغرفة الشمالية نحو بوابتها الغربية...")
+            walk_to(2025, 5245, plane=0, timeout=15)
+            walk_to(2020, 5244, plane=0, timeout=15)
+            walk_to(2019, 5237, plane=0, timeout=15)
+            try_pass_door("Rickety door")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("x", 9999) > 2016:
+                raise SafetyStop(f"فشل إثبات عبور باب الغرفة الشمالية بالطابق الثاني، اللاعب عند: {after_pos}")
+
+        if start_stage <= 3:
+            print("📍 [المقطع 4/4] عبور الممر الغربي نحو باب الغرفة المركزية...")
+            walk_to(2014, 5237, plane=0, timeout=15)
+            walk_to(2013, 5244, plane=0, timeout=15)
+            walk_to(2005, 5244, plane=0, timeout=15)
+            walk_to(2005, 5230, plane=0, timeout=15)
+            walk_to(2007, 5228, plane=0, timeout=15)
+            walk_to(2011, 5228, plane=0, timeout=15)
+            walk_to(2014, 5231, plane=0, timeout=15)
+            walk_to(2014, 5228, plane=0, timeout=15)
+            try_pass_door("Rickety door")
+            after_st = api_get("/state")
+            after_pos = after_st.get("player", {}).get("position", {}) if isinstance(after_st, dict) else {}
+            if after_pos.get("x", 0) < 2017 or after_pos.get("y", 9999) > 5230:
+                raise SafetyStop(f"فشل إثبات دخول الغرفة المركزية بالطابق الثاني، اللاعب عند: {after_pos}")
+
+        # 3. الوصول لموقع كيس الحبوب في قلب الغرفة المركزية (Grain of Plenty: 19000)
+        print("📍 الوصول لكيس Grain of Plenty في الغرفة المركزية...")
+        walk_to(2021, 5218, plane=0, timeout=20)
+
+        # 4. تفتيش الكيس واستلام المكافأة مع حل الأسئلة الأمنية
+        print("🖐️ التفاعل مع كيس Grain of Plenty (19000)...")
+        for attempt in range(5):
+            interact_object(19000, "Search")
+            for _ in range(6):
+                time.sleep(1)
+                handle_dialogue_and_modals()
+            if api_get("/varbits?id=2310").get("value", 0) == 1:
+                print("💰 مبروووك! تم استلام مكافأة الطابق الثاني (3,000 GP + Slap head emote) بنجاح!")
+                return True
+        raise SafetyStop("فشل حصد مكافأة الطابق الثاني بعد التفاعل مع الصندوق (Grain of Plenty: 19000)")
+
+    elif action == "FLOOR_2_TO_FLOOR_3":
+        print("\n--- عبور الطابق الثاني إلى سلم النزول للطابق الثالث ---")
+        st = api_get("/state")
+        pos = st.get("player", {}).get("position", {}) if isinstance(st, dict) else {}
+        px = pos.get("x", 0)
+        py = pos.get("y", 0)
+        # إذا كان اللاعب في غرفة البداية (بعيد عن الغرفة المركزية)، يستخدم بوابة الاختصار
+        if px >= 2035 and py >= 5238:
+            interact_object(19005, "Use")
+            time.sleep(2)
+            handle_dialogue_and_modals()
         walk_to(2026, 5219, plane=0, timeout=35)
         print("🖐️ النزول عبر سلم الطابق الثاني (19004)...")
         for attempt in range(4):
@@ -329,228 +535,167 @@ def main():
             for _ in range(6):
                 time.sleep(1)
                 handle_dialogue_and_modals()
-                st_chk = api_get("/state")
-                px_chk = st_chk.get("player", {}).get("position", {}).get("x", 0)
-                if 2110 <= px_chk <= 2185:
+                st = api_get("/state")
+                if 2110 <= st.get("player", {}).get("position", {}).get("x", 0) <= 2185:
                     print("📍 تم النزول للطابق الثالث بنجاح!")
-                    break
-            st_chk = api_get("/state")
-            if 2110 <= st_chk.get("player", {}).get("position", {}).get("x", 0) <= 2185:
-                break
+                    return True
+        return False
 
-    # 3. الطابق الثالث وحصد الـ 5,000 GP (Pit of Pestilence)
-    st_cur = api_get("/state")
-    pos_cur = st_cur.get("player", {}).get("position", {})
-    px, py = pos_cur.get('x', 0), pos_cur.get('y', 0)
-    if 2110 <= px <= 2185 and py >= 5000:
-        vb3_chk = api_get("/varbits?id=2311").get("value", 0)
-        if vb3_chk == 1:
-            print("\n💰 مكافأة الطابق 3 (5,000 GP) مستلمة بالفعل في الحساب!")
-        else:
-            print("\n--- [المرحلة 5]: عبور متاهة الطابق الثالث بمحطات وسيطة (Waypoints) وحصد 5,000 GP ---")
-            if not (px >= 2140 and py >= 5278):
-                # محطة 1: أمام الباب الشرقي الأول
-                walk_to(2132, 5258, plane=0, timeout=25)
-                try_pass_door("Oozing barrier")
-                # محطة 2: أمام الباب الشمالي الثاني
-                walk_to(2132, 5260, plane=0, timeout=15)
-                try_pass_door("Oozing barrier")
-                # محطة 3: أمام ممر غرفة الصندوق
-                walk_to(2132, 5277, plane=0, timeout=30)
-                try_pass_door("Oozing barrier")
-                # محطة 4: غرفة الصندوق مباشرة
-                walk_to(2144, 5281, plane=0, timeout=30)
+    elif action == "CLAIM_FLOOR_3_REWARD":
+        print("\n--- عبور متاهة الطابق الثالث بمحطات وسيطة وحصد 5,000 GP ---")
+        walk_to(2132, 5258, plane=0, timeout=25)
+        try_pass_door("Oozing barrier")
+        walk_to(2132, 5260, plane=0, timeout=15)
+        try_pass_door("Oozing barrier")
+        walk_to(2132, 5277, plane=0, timeout=30)
+        try_pass_door("Oozing barrier")
+        walk_to(2144, 5281, plane=0, timeout=30)
+        for attempt in range(4):
+            interact_object(23709, "Open")
+            for _ in range(6):
+                time.sleep(1)
+                handle_dialogue_and_modals()
+            if api_get("/varbits?id=2311").get("value", 0) == 1:
+                print("💰 مبروووك! تم استلام الـ 5,000 GP بنجاح!")
+                return True
+        raise SafetyStop("فشل حصد مكافأة الطابق الثالث بعد التفاعل مع الصندوق")
 
-            for attempt in range(4):
-                interact_object(23709, "Open")
-                for _ in range(6):
-                    time.sleep(1)
-                    handle_dialogue_and_modals()
-                vb3 = api_get("/varbits?id=2311").get("value", 0)
-                if vb3 == 1:
-                    print("💰 مبروووك! تم استلام الـ 5,000 GP بنجاح!")
-                    break
-
-        if api_get("/varbits?id=2311").get("value") != 1:
-            raise SafetyStop("لم يتم تأكيد مكافأة الطابق الثالث؛ لن ننزل للطابق الرابع")
-        print("\n--- [المرحلة 6]: النزول للطابق الرابع عبر السلم (23706) ---")
+    elif action == "FLOOR_3_TO_FLOOR_4":
+        print("\n--- النزول للطابق الرابع عبر السلم (23706) ---")
         walk_to(2147, 5284, plane=0, timeout=30)
         for attempt in range(5):
             interact_object(23706, "Climb-down")
             for _ in range(6):
                 time.sleep(1)
                 handle_dialogue_and_modals()
-                st_chk = api_get("/state")
-                px_chk = st_chk.get("player", {}).get("position", {}).get("x", 0)
-                if 2300 <= px_chk <= 2375:
+                st = api_get("/state")
+                if 2300 <= st.get("player", {}).get("position", {}).get("x", 0) <= 2380:
                     print("📍 تم النزول للطابق الرابع بنجاح!")
-                    break
-            st_chk = api_get("/state")
-            if 2300 <= st_chk.get("player", {}).get("position", {}).get("x", 0) <= 2375:
-                break
+                    return True
+        return False
 
-    # 4. الطابق الرابع وحصد Fancy Boots (Sepulchre of Death)
-    st_cur = api_get("/state")
-    pos_cur = st_cur.get("player", {}).get("position", {})
-    px, py = pos_cur.get('x', 0), pos_cur.get('y', 0)
-    if 2300 <= px <= 2375 and py >= 5000:
-        vb4_cur = api_get("/varbits?id=2312").get("value", 0)
-        if vb4_cur == 1:
-            print("👟 مكافأة Fancy Boots مستلمة بالفعل في الحساب!")
-        else:
-            print("\n--- [المرحلة 7]: التوجه لمهد الحياة (Cradle of Life) لحصد Fancy Boots ---")
-            # 1. التوجه نحو أول باب شمالي وتجاوز البابين
-            walk_to(2359, 5230, plane=0, timeout=20)
-            try_pass_door("Portal of Death")
-            walk_to(2359, 5234, plane=0, timeout=10)
-            try_pass_door("Portal of Death")
+    elif action == "CLAIM_FLOOR_4_REWARD":
+        print("\n--- التوجه لمهد الحياة (Cradle of Life) لحصد Fancy Boots ---")
+        walk_to(2359, 5230, plane=0, timeout=20)
+        try_pass_door("Portal of Death")
+        walk_to(2359, 5234, plane=0, timeout=10)
+        try_pass_door("Portal of Death")
+        walk_to(2341, 5238, plane=0, timeout=25)
+        walk_to(2341, 5226, plane=0, timeout=20)
+        try_pass_door("Portal of Death")
+        walk_to(2341, 5222, plane=0, timeout=10)
+        try_pass_door("Portal of Death")
+        walk_to(2343, 5215, plane=0, timeout=15)
 
-            # 2. الجري السريع في الممر الشمالي الغربي
-            walk_to(2341, 5238, plane=0, timeout=25)
-            walk_to(2341, 5226, plane=0, timeout=20)
+        for attempt in range(5):
+            interact_object(23731, "Search")
+            for _ in range(6):
+                time.sleep(1)
+                handle_dialogue_and_modals()
+                click_res = api_post("/widgets/click", {"groupId": 270, "childId": 15})
+                if isinstance(click_res, dict) and click_res.get("clicked") is True:
+                    print("👟 تم النقر بنجاح على ويدجت اختيار Fancy boots!")
+            if api_get("/varbits?id=2312").get("value", 0) == 1:
+                print("👟 مبروووك! تم اختيار وحصد Fancy Boots بنجاح!")
+                return True
+        raise SafetyStop("فشل حصد مكافأة الطابق الرابع (Fancy Boots)")
 
-            # 3. أبواب الدخول لغرفة مهد الحياة
-            try_pass_door("Portal of Death")
-            walk_to(2341, 5222, plane=0, timeout=10)
-            try_pass_door("Portal of Death")
-
-            # 4. التوجه أمام المهد مباشرة
-            walk_to(2343, 5215, plane=0, timeout=15)
-
-            for attempt in range(5):
-                interact_object(23731, "Search")
-                for _ in range(6):
-                    time.sleep(1)
-                    handle_dialogue_and_modals()
-                    # واجهة اختيار الجزمة (Make-All Interface groupId: 270, childId: 15) تظهر حصراً عند التفاعل مع المهد
-                    click_res = api_post("/widgets/click", {"groupId": 270, "childId": 15})
-                    if isinstance(click_res, dict) and click_res.get("clicked") is True:
-                        print("👟 تم النقر بنجاح على ويدجت اختيار Fancy boots!")
-
-                vb4 = api_get("/varbits?id=2312").get("value", 0)
-                if vb4 == 1:
-                    print("👟 مبروووك! تم اختيار وحصد Fancy Boots بنجاح!")
-                    break
-
-
-        if api_get("/varbits?id=2312").get("value") != 1:
-            raise SafetyStop("لم يتم تأكيد مكافأة الطابق الرابع")
-        print("\n--- [المرحلة 8]: الهروب للسطح عبر الحبل العظمي (Bone Chain: 23732) ---")
+    elif action == "EXIT_FLOOR_4_TO_SURFACE":
+        print("\n--- الصعود للسطح عبر الحبل العظمي (Bone Chain: 23732) ---")
         walk_to(2349, 5215, plane=0, timeout=20)
         for attempt in range(4):
             interact_object(23732, "Climb-up")
             for _ in range(6):
                 time.sleep(1)
                 handle_dialogue_and_modals()
-                st_chk = api_get("/state")
-                py_chk = st_chk.get("player", {}).get("position", {}).get("y", 0)
-                if py_chk < 5000:
-                    print("📍 تم الهروب والصعود لسطح الأرض بنجاح!")
-                    break
-            st_chk = api_get("/state")
-            if st_chk.get("player", {}).get("position", {}).get("y", 0) < 5000:
-                break
+                st = api_get("/state")
+                if st.get("player", {}).get("position", {}).get("y", 0) < 5000:
+                    print("📍 تم الصعود لسطح الأرض بنجاح!")
+                    return True
+        return False
 
-    # التحقق الحاسم من جمع كامل المكافآت قبل التوجه للبنك
-    vb3 = api_get("/varbits?id=2311").get("value", 0)
-    vb4 = api_get("/varbits?id=2312").get("value", 0)
-    if vb3 != 1 or vb4 != 1:
-        print("\n" + "!" * 65)
-        print("⚠️ تنبيه هندسي: لم يتم حصد كامل المكافآت بنجاح بعد!")
-        print(f"📌 حالة الطابق 3 (5,000 GP): {'✅ تم الاستلام' if vb3 == 1 else '❌ لم يتم الاستلام (Varbit 2311 == 0)'}")
-        print(f"📌 حالة الطابق 4 (Fancy Boots): {'✅ تم الاستلام' if vb4 == 1 else '❌ لم يتم الاستلام (Varbit 2312 == 0)'}")
-        print("راجع الموقع والدم والطعام يدوياً قبل أي إعادة تشغيل.")
-        print("!" * 65)
-        input("\nاضغط Enter للإغلاق...")
-        return
+    elif action == "GO_TO_BANK":
+        print("\n--- التوجه لبنك الـ Grand Exchange لحفظ الأرباح والجزمة ---")
+        walk_to(3164, 3487, plane=0, timeout=75)
+        controller.require(api_post("/bank/open", {}), "فتح البنك")
+        time.sleep(2)
+        controller.require(api_post("/bank/deposit", {"all": True}), "طلب الإيداع")
+        time.sleep(1)
 
-    print("\n--- [المرحلة 9]: التوجه لبنك الـ Grand Exchange لحفظ كل الأرباح والجزمة ---")
-    walk_to(3164, 3487, plane=0, timeout=75)
-    controller.require(api_post("/bank/open", {}), "فتح البنك")
-    time.sleep(2)
-    controller.require(api_post("/bank/deposit", {"all": True}), "طلب الإيداع")
-    time.sleep(1)
+        bank_data = api_get("/bank")
+        if not isinstance(bank_data, dict) or "items" not in bank_data or not isinstance(bank_data.get("items"), list):
+            has_boots = False
+            coin_display = "الرصيد غير معروف (فشل استعلام البنك)"
+        else:
+            has_boots = verify_bank_has_boots(bank_data)
+            items = bank_data.get("items", [])
+            coin_qty = next((it.get("quantity") for it in items if it.get("id") == 995 and isinstance(it.get("quantity"), int)), None)
+            coin_display = f"{coin_qty} GP" if coin_qty is not None else "0 GP (لم يُرصد ذهب في الخزينة)"
 
-    # التحقق الفعلي من محتويات البنك بعد الإيداع
-    bank_data = api_get("/bank")
-    if not isinstance(bank_data, dict) or "items" not in bank_data or not isinstance(bank_data.get("items"), list):
-        has_boots = False
-        coin_display = "الرصيد غير معروف (فشل استعلام البنك)"
-    else:
-        has_boots = verify_bank_has_boots(bank_data)
-        items = bank_data.get("items", [])
-        coin_qty = next((it.get("quantity") for it in items if it.get("id") == 995 and isinstance(it.get("quantity"), int)), None)
-        coin_display = f"{coin_qty} GP" if coin_qty is not None else "0 GP (لم يُرصد ذهب في الخزينة)"
+        api_post("/bank/close", {})
+        print("\n" + "=" * 65)
+        if has_boots:
+            print("✅ تم التحقق الفعلي من وجود Fancy boots بكمية صالحة داخل البنك!")
+        else:
+            print("⚠️ تنبيه: لم يتم رصد Fancy boots داخل بيانات البنك بعد الإيداع!")
+        print(f"💰 رصيد الذهب المسجل بالبنك: {coin_display}.")
+        print("=" * 65)
+        return has_boots
 
+    return False
+
+def main():
+    print("=" * 65)
+    print("🚀 مرحباً بك في البوت المستقل الشامل لـ Stronghold of Security")
+    print("💰 الهدف: جمع 10,000 GP + Fancy Boots وحفظها في البنك")
+    print("⚡ نظام الاستئناف المرن: قراءة الحالة -> قرار -> تنفيذ -> إعادة قراءة")
+    print("=" * 65)
+
+    ensure_login()
     api_post("/bank/close", {})
 
-    print("\n" + "=" * 65)
-    if has_boots:
-        print("✅ تم التحقق الفعلي من وجود Fancy boots بكمية صالحة داخل البنك!")
-    else:
-        print("⚠️ تنبيه: لم يتم رصد Fancy boots داخل بيانات البنك بعد الإيداع!")
-    print(f"💰 رصيد الذهب المسجل بالبنك: {coin_display}.")
-    print("=" * 65)
-    input("اضغط Enter للإغلاق...")
-    return has_boots
+    # فحص أولي سريع إذا كان الحساب قد أتم الحصن بالكامل وموجود على السطح
+    st_init = api_get("/state")
+    pos_init = st_init.get("player", {}).get("position", {}) if isinstance(st_init, dict) else {}
+    px_init = pos_init.get("x", 0) if isinstance(pos_init, dict) else 0
+    py_init = pos_init.get("y", 0) if isinstance(pos_init, dict) else 0
+    if is_all_rewards_claimed() and py_init < 5000:
+        print("\n" + "=" * 65)
+        print("🎉 مهمة Stronghold of Security مكتملة رسمياً 100% على هذا الحساب!")
+        print("✅ كافة الطوابق الـ 4 مكتملة (Varbits 2309..2312 = 1).")
+        print(f"📍 موقع اللاعب الحالي على السطح: ({px_init}, {py_init})؛ لا داعي لدخول الكهف مجدداً.")
+        print("=" * 65)
+        return True
 
+    max_steps = 30
+    steps_taken = 0
 
+    while steps_taken < max_steps:
+        steps_taken += 1
+        progress = read_progress()
+        decision = choose_next_action(progress)
+        action = decision.get("action")
+        reason = decision.get("reason", "")
+        print(f"\n🧭 [دورة {steps_taken}]: القرار الحالي -> {action}")
+        print(f"📋 السبب المعتمد: {reason}")
 
-# Fail-closed overrides; latest upstream route is retained, not certified.
-from safety import SafetyStop, SafetyController
-controller = SafetyController(api_get, api_post)
-_original_handle = handle_dialogue_and_modals
-
-def handle_dialogue_and_modals():
-    controller.check()
-    return _original_handle()
-
-def check_and_eat_food():
-    controller.check()
-
-def try_pass_door(door_name="Oozing barrier"):
-    before = controller.check()
-    for action in ("Pass-through", "Open"):
-        result = api_post("/objects/interact", {"name": door_name, "action": action})
-        if result.get("success") is True:
-            print("تم قبول التفاعل؛ لم يتم تأكيد عبور الحاجز بعد.")
-            for _ in range(8):
-                time.sleep(0.5)
-                handle_dialogue_and_modals()
-                after = controller.check()
-                if after != before:
-                    print("رُصد تغير الموقع فقط؛ المحطة التالية ستتحقق من الوصول.")
-                    return True
-            raise SafetyStop("لم تُرصد حركة بعد التفاعل مع الباب")
-    raise SafetyStop("فشل التفاعل مع الباب")
-
-def try_open_nearby_doors():
-    # No blind nearest-door interaction: it may send the player backwards.
-    raise SafetyStop("المسار متوقف؛ يلزم فحص الباب والمسار يدوياً، لن نختار باباً عشوائياً")
-
-def walk_to(x, y, plane=0, timeout=75):
-    controller.check()
-    controller.require(api_post("/walk", {"x": x, "y": y, "plane": plane, "wait": False}), "المشي")
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        pos = controller.check()
-        if pos[2] == plane and max(abs(pos[0]-x), abs(pos[1]-y)) <= 1:
-            print(f"وصل إلى جوار الهدف: {pos}")
+        if action == "STOP_COMPLETED":
+            print("\n" + "=" * 65)
+            print("🎉 مهمة Stronghold of Security مكتملة رسمياً 100% على هذا الحساب!")
+            print("✅ كافة الطوابق الـ 4 مكتملة (Varbits 2309..2312 = 1).")
+            print("=" * 65)
             return True
-        handle_dialogue_and_modals()
-        time.sleep(0.5)
-    raise SafetyStop(f"انتهت مهلة المشي إلى {(x, y, plane)}؛ لن تُنفذ الخطوة التالية")
 
-def interact_object(obj_id, action):
-    controller.check()
-    # Only the explicitly requested surface exit may change underground status.
-    if obj_id == 23732 and action == "Climb-up":
-        controller.allow_surface_exit = True
-    result = api_post("/objects/interact", {"id": obj_id, "action": action})
-    controller.require(result, f"التفاعل {obj_id}")
-    time.sleep(0.6)
-    handle_dialogue_and_modals()
-    return result
+        if action == "STOP":
+            print(f"\n⚠️ توقف آمن للمسار: {reason}")
+            return False
+
+        success = execute_step(action)
+        if not success:
+            print(f"❌ تعذر استكمال الإجراء بنجاح: {action}")
+            return False
+
+    raise SafetyStop("تم بلوغ الحد الأقصى لدورات القرار دون الوصول لاكتمال أو توقف صريح")
 
 if __name__ == "__main__":
     try:
