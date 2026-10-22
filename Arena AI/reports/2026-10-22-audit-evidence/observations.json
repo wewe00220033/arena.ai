@@ -1,0 +1,103 @@
+{
+  "product_commit": "bbc34bf4682b867564c6e0443078049aeaff8b74",
+  "live_game_calls": 0,
+  "reproduced_observations": [
+    {
+      "id": "A1",
+      "observed": {
+        "main_return": true,
+        "read_progress_called": false,
+        "posted_endpoints": [
+          "/bank/close"
+        ],
+        "planner_with_boots": "GO_TO_BANK"
+      },
+      "evidence_type": "OFFLINE_MOCK_REPRODUCTION"
+    },
+    {
+      "id": "A2",
+      "observed": {
+        "invalid_initial_state_main_return": true
+      },
+      "evidence_type": "OFFLINE_MOCK_REPRODUCTION"
+    },
+    {
+      "id": "A3",
+      "observed": {
+        "status": "VALID",
+        "inventory": [],
+        "hp": null,
+        "decision": "STOP_COMPLETED"
+      },
+      "evidence_type": "OFFLINE_MOCK_REPRODUCTION"
+    },
+    {
+      "id": "A4",
+      "observed": {
+        "invalid_exit_state_execute_return": true,
+        "scope": "exit-branch check isolated; helpers mocked"
+      },
+      "evidence_type": "OFFLINE_MOCK_REPRODUCTION"
+    },
+    {
+      "id": "A5",
+      "observed": {
+        "door_return": true,
+        "before": [
+          2132,
+          5257,
+          0
+        ],
+        "after": [
+          2133,
+          5257,
+          0
+        ],
+        "crossing_proven": false
+      },
+      "evidence_type": "OFFLINE_MOCK_REPRODUCTION"
+    },
+    {
+      "id": "A6",
+      "observed": {
+        "permission_still_set": true,
+        "subsequent_positions_accepted": [
+          [
+            3081,
+            3421,
+            0
+          ],
+          [
+            2349,
+            5215,
+            0
+          ],
+          [
+            3221,
+            3223,
+            0
+          ]
+        ]
+      },
+      "evidence_type": "OFFLINE_MOCK_REPRODUCTION"
+    },
+    {
+      "id": "A7",
+      "observed": {
+        "quantity": true,
+        "boots_accepted": true
+      },
+      "evidence_type": "OFFLINE_MOCK_REPRODUCTION"
+    },
+    {
+      "id": "A8",
+      "observed": {
+        "bank_items": [
+          null
+        ],
+        "exception": "AttributeError"
+      },
+      "evidence_type": "OFFLINE_MOCK_REPRODUCTION"
+    }
+  ]
+}
